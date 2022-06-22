@@ -1,0 +1,25 @@
+- platform: generic_thermostat
+  name: Office AC
+  heater: switch.office_ac
+  target_sensor: sensor.nest_temperature_sensor_upstairs_temperature
+  min_temp: 64
+  max_temp: 86
+  ac_mode: true
+  target_temp: 73
+  cold_tolerance: 0
+  hot_tolerance: 2
+  initial_hvac_mode: "off"
+  away_temp: 80
+  precision: 1
+- platform: generic_thermostat
+  name: Cigar Room Fireplace
+  heater: input_boolean.home_assistant_fireplace
+  target_sensor: sensor.cigar_room_temp_temperature
+  min_temp: 0
+  max_temp: 100
+  target_temp: 60
+  cold_tolerance: 2
+  hot_tolerance: 0
+  initial_hvac_mode: "off"
+  away_temp: 0
+  precision: 1

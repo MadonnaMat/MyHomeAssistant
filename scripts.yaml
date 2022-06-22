@@ -1,0 +1,32 @@
+'1655381206162':
+  sequence:
+  - service: scene.turn_on
+    target:
+      entity_id: scene.welcome_home
+    metadata: {}
+  - type: turn_on
+    device_id: 88cc3a491d72955d7a52219c0329d35c
+    entity_id: light.kitchen_lights
+    domain: light
+    brightness_pct: 100
+  - type: turn_on
+    device_id: ed97c29bebf0b2b618b8e8ed85a42563
+    entity_id: light.living_room_lamp
+    domain: light
+  mode: single
+  alias: Welcome Me Home
+have_alexa_say:
+  alias: Have Alexa Say
+  variables:
+    thing_to_say: default
+  sequence:
+  - service: input_text.set_value
+    data_template:
+      value: '{{ thing_to_say }}'
+    target:
+      entity_id: input_text.say_everywhere_text
+  - service: input_button.press
+    data: {}
+    target:
+      entity_id: input_button.say_everywhere_trigger
+  mode: single

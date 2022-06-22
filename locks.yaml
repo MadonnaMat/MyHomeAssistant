@@ -1,0 +1,2 @@
+- platform: "sesame"
+  api_key: !secret sesame_api_key

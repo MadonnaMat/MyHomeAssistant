@@ -1,0 +1,44 @@
+dishwasher_cycle_count:
+  friendly_name: "Dishwasher Cycle Count"
+  initial_value: 0
+  value_template: >-
+    {% if (states('var.dishwasher_cycle_count') | int) < 13 %}
+      {{ (states('var.dishwasher_cycle_count') | int) + 1 }}
+    {% else %}
+      1
+    {% endif %}
+  tracked_entity_id:
+    - input_button.dishwasher_toggler
+
+dishwasher_cycle:
+  friendly_name: "Dishwasher Cycle"
+  initial_value: "Off"
+  value_template: >-
+    {% if (states('var.dishwasher_cycle_count') | int) < 2%}
+      Off
+    {% elif (states('var.dishwasher_cycle_count') | int) < 3 %}
+      Prewash
+    {% elif (states('var.dishwasher_cycle_count') | int) < 4 %}
+      Washing
+    {% elif (states('var.dishwasher_cycle_count') | int) < 8 %}
+      Rinsing
+    {% else %}
+      Drying
+    {% endif %}
+  tracked_entity_id:
+    - var.dishwasher_cycle_count
+
+dishwasher_light_color:
+  initial_value: "4,157,255"
+  value_template: >-
+    {% if (states('var.dishwasher_cycle_count') | int) > 1 %}
+      4,157,255
+    {% elif states('input_boolean.dishes_clean') == 'on' %}
+      0,255,64
+    {% else %}
+      255,66,2
+    {% endif %}
+  tracked_entity_id:
+    - var.dishwasher_cycle_count
+    - input_boolean.dishwasher_on
+    - input_boolean.dishes_clean

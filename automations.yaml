@@ -1,0 +1,746 @@
+- id: '1655165611364'
+  alias: Front Door - Turn on light when sees person
+  description: ''
+  trigger:
+  - platform: device
+    device_id: 2ac27d26e5c53562439237fefcd006f9
+    domain: nest
+    type: camera_person
+  condition:
+  - condition: or
+    conditions:
+    - condition: sun
+      before: sunrise
+    - condition: sun
+      after: sunset
+  action:
+  - type: turn_on
+    device_id: fdddfa07a1e7904fb2ebe7dac92ab65c
+    entity_id: switch.front_door_light
+    domain: switch
+  mode: single
+- id: '1655165866017'
+  alias: Front Door - Turn off light if no motion for 30 minutes
+  description: ''
+  trigger:
+  - platform: device
+    type: turned_on
+    device_id: fdddfa07a1e7904fb2ebe7dac92ab65c
+    entity_id: switch.front_door_light
+    domain: switch
+    for:
+      hours: 0
+      minutes: 30
+      seconds: 0
+  condition: []
+  action:
+  - type: turn_off
+    device_id: fdddfa07a1e7904fb2ebe7dac92ab65c
+    entity_id: switch.front_door_light
+    domain: switch
+  mode: single
+- id: '1655218914050'
+  alias: Vacuum - Notify me when vacuuming starts
+  description: ''
+  trigger:
+  - platform: device
+    device_id: a2618427378c7a590d1218ffb6e1dbec
+    domain: vacuum
+    entity_id: vacuum.vacuum
+    type: cleaning
+  condition: []
+  action:
+  - service: script.have_alexa_say
+    data:
+      thing_to_say: Vacuum has started, pick up all clothes and wires
+  mode: single
+- id: '1655227749466'
+  alias: Living Room - Turn off Living Room Lights when Fire TV is playing
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - media_player.fire_tv_192_168_86_27
+    to: playing
+  condition: []
+  action:
+  - service: light.turn_off
+    data:
+      transition: 2
+    target:
+      entity_id: light.living_room_lights
+  mode: single
+- id: '1655228525152'
+  alias: Living Room - Turn on Living Room Lights when Fire Tv is paused
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - media_player.fire_tv_192_168_86_27
+    from: playing
+  condition: []
+  action:
+  - service: light.turn_on
+    data:
+      transition: 2
+    target:
+      entity_id: light.living_room_lights
+  mode: single
+- id: '1655251368912'
+  alias: Laundry Room - Turn on laundry room light when laundry turns on
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - sensor.front_load_washer
+    to: 'on'
+  - platform: state
+    entity_id:
+    - sensor.dryer
+    to: 'on'
+  condition: []
+  action:
+  - type: turn_on
+    device_id: 3558181edaa8e71b61f2dc4e3e70901d
+    entity_id: light.laundry_room_overhead
+    domain: light
+  mode: single
+- id: '1655251482058'
+  alias: Laundry Room - Turn off laundry light an hour after dryer completes
+  description: ''
+  trigger:
+  - type: turned_on
+    platform: device
+    device_id: 6b4906066cd34d7691244cb1c47f09dc
+    entity_id: binary_sensor.dryer_dry_completed
+    domain: binary_sensor
+  condition: []
+  action:
+  - delay:
+      hours: 1
+      minutes: 0
+      seconds: 0
+      milliseconds: 0
+  - type: turn_off
+    device_id: 3558181edaa8e71b61f2dc4e3e70901d
+    entity_id: light.laundry_room_overhead
+    domain: light
+  - service: light.turn_off
+    data: {}
+    target:
+      device_id: daf76bf5f02a10c9107f693e95e8669a
+  mode: single
+- id: '1655296938164'
+  alias: Security - Set lights to Welcome Me Home when Guard is turned off
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - alarm_control_panel.alexa_guard_dec4f
+    to: disarmed
+  condition: []
+  action:
+  - service: scene.turn_on
+    target:
+      entity_id: scene.welcome_home
+    metadata: {}
+  - type: turn_on
+    device_id: 88cc3a491d72955d7a52219c0329d35c
+    entity_id: light.kitchen_lights
+    domain: light
+    brightness_pct: 100
+  - type: turn_on
+    device_id: ed97c29bebf0b2b618b8e8ed85a42563
+    entity_id: light.living_room_lamp
+    domain: light
+    brightness_pct: 100
+  mode: single
+- id: '1655314600301'
+  alias: Security, Office- Set AC to away when Guard is activated
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - alarm_control_panel.alexa_guard_dec4f
+    to: armed_away
+  condition: []
+  action:
+  - service: climate.set_preset_mode
+    data:
+      preset_mode: away
+    target:
+      entity_id: climate.office_ac
+  mode: single
+- id: '1655314636635'
+  alias: Security, Office - Set AC to none when Guard is deactivated
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - alarm_control_panel.alexa_guard_dec4f
+    to: disarmed
+  condition: []
+  action:
+  - service: climate.set_preset_mode
+    data:
+      preset_mode: none
+    target:
+      entity_id: climate.office_ac
+  mode: single
+- id: '1655340272174'
+  alias: Front Door - When front door is unlocked for 10 minutes, lock it
+  description: ''
+  trigger:
+  - platform: device
+    device_id: 58166dcae9fd95cdc01bb486db7065da
+    domain: lock
+    entity_id: lock.entryway_lock
+    type: unlocked
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+  condition: []
+  action:
+  - device_id: 58166dcae9fd95cdc01bb486db7065da
+    domain: lock
+    entity_id: lock.entryway_lock
+    type: lock
+  mode: single
+- id: '1655340355220'
+  alias: Security - When Google says I'm away, tell Amazon I'm away
+  description: ''
+  trigger:
+  - platform: device
+    type: turned_off
+    device_id: e15b8202fc9e27ef4875856104848fd4
+    entity_id: switch.home_occupied
+    domain: switch
+  condition: []
+  action:
+  - service: alarm_control_panel.alarm_arm_away
+    data: {}
+    target:
+      entity_id: alarm_control_panel.alexa_guard_dec4f
+  mode: single
+- id: '1655340396941'
+  alias: Security - When Google says I'm home, tell Amazon I'm home
+  description: ''
+  trigger:
+  - platform: device
+    type: turned_on
+    device_id: e15b8202fc9e27ef4875856104848fd4
+    entity_id: switch.home_occupied
+    domain: switch
+  condition: []
+  action:
+  - service: alarm_control_panel.alarm_disarm
+    data: {}
+    target:
+      entity_id: alarm_control_panel.alexa_guard_dec4f
+  mode: single
+- id: '1655393084324'
+  alias: Laundry Room - Notify me when washing completes
+  description: ''
+  trigger:
+  - type: turned_on
+    platform: device
+    device_id: b32eb92cc8005cfee54080d11bf5e231
+    entity_id: binary_sensor.front_load_washer_wash_completed
+    domain: binary_sensor
+  condition: []
+  action:
+  - service: script.have_alexa_say
+    data:
+      thing_to_say: Washer has completed
+  mode: single
+- id: '1655393113659'
+  alias: Laundry Room - Notify me when drying completes
+  description: ''
+  trigger:
+  - type: turned_on
+    platform: device
+    device_id: 6b4906066cd34d7691244cb1c47f09dc
+    entity_id: binary_sensor.dryer_dry_completed
+    domain: binary_sensor
+  condition: []
+  action:
+  - service: script.have_alexa_say
+    data:
+      thing_to_say: Dryer has completed
+  mode: single
+- id: '1655395412616'
+  alias: Bedroom - Start My Day when I weigh myself in the morning
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - sensor.withings_weight_kg_matt
+  condition:
+  - condition: time
+    before: '12:00:00'
+    after: 04:00:00
+  action:
+  - service: media_player.play_media
+    data:
+      media_content_id: start my day
+      media_content_type: routine
+    target:
+      entity_id: media_player.matthew_s_echo_show
+  - delay:
+      hours: 0
+      minutes: 10
+      seconds: 0
+      milliseconds: 0
+  - service: script.1655381206162
+    data: {}
+  initial_state: true
+  mode: single
+- id: '1655416005293'
+  alias: Basement - Turn on basement light if motion detected
+  description: ''
+  trigger:
+  - type: motion
+    platform: device
+    device_id: 2dde9dcea8e2acf1980396ca7a56edd4
+    entity_id: binary_sensor.basement_motion_detector_occupancy
+    domain: binary_sensor
+  condition: []
+  action:
+  - type: turn_on
+    device_id: 8e5d8e18861180821e6b2c3f9a4d0fa7
+    entity_id: light.basement_light
+    domain: light
+  mode: single
+- id: '1655429754092'
+  alias: Test - Test With No Real Things
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - input_boolean.test_light_slow_blink
+    to: 'on'
+  condition: []
+  action:
+  - repeat:
+      until:
+      - condition: state
+        entity_id: input_boolean.test_light_slow_blink
+        state: 'off'
+      sequence:
+      - service: light.toggle
+        data:
+          transition: 1
+        target:
+          entity_id: light.living_room_lamp
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 2
+          milliseconds: 0
+  mode: single
+- id: '1655469147781'
+  alias: Front Door, Living Room - Show Person if seen
+  description: ''
+  trigger:
+  - platform: device
+    device_id: 2ac27d26e5c53562439237fefcd006f9
+    domain: nest
+    type: camera_person
+  condition: []
+  action:
+  - service: camera.snapshot
+    data:
+      filename: /config/www/PersonSeen.jpg
+    target:
+      entity_id: camera.front_door
+  - service: notify.android_tv_fire_tv
+    data:
+      title: Person Detected
+      data:
+        position: bottom-right
+        duration: 10
+        image:
+          path: /config/www/PersonSeen.jpg
+      message: Front Door
+  mode: single
+- id: '1655626707636'
+  alias: Dishwasher - Dishwasher Turned On
+  description: ''
+  trigger:
+  - type: power
+    platform: device
+    device_id: aa6e56205eb60b918a02ba9454e41a29
+    entity_id: sensor.dishwasher_power
+    domain: sensor
+    above: 10
+  condition:
+  - condition: state
+    entity_id: input_boolean.dishwasher_on
+    state: 'off'
+  action:
+  - service: input_boolean.turn_on
+    data: {}
+    target:
+      entity_id: input_boolean.dishwasher_on
+  - service: var.set
+    data:
+      entity_id: var.dishwasher_cycle_count
+      value: 1
+  - service: input_button.press
+    data: {}
+    target:
+      entity_id: input_button.dishwasher_toggler
+  - service: timer.start
+    data: {}
+    target:
+      entity_id: timer.dishwasher_timer
+  mode: single
+- id: '1655627509174'
+  alias: Dishwasher - Start Wash
+  description: ''
+  trigger:
+  - type: power
+    platform: device
+    device_id: aa6e56205eb60b918a02ba9454e41a29
+    entity_id: sensor.dishwasher_power
+    domain: sensor
+    above: 200
+  condition:
+  - condition: state
+    entity_id: var.dishwasher_cycle
+    state: Prewash
+  action:
+  - service: input_button.press
+    data: {}
+    target:
+      entity_id: input_button.dishwasher_toggler
+  mode: single
+- id: '1655628266971'
+  alias: Dishwasher - Toggle State
+  description: ''
+  trigger:
+  - type: power
+    platform: device
+    device_id: aa6e56205eb60b918a02ba9454e41a29
+    entity_id: sensor.dishwasher_power
+    domain: sensor
+    below: 40
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 50
+  condition:
+  - condition: or
+    conditions:
+    - condition: state
+      entity_id: var.dishwasher_cycle
+      state: Washing
+    - condition: state
+      entity_id: var.dishwasher_cycle
+      state: Rinsing
+    - condition: state
+      entity_id: var.dishwasher_cycle
+      state: Drying
+  action:
+  - service: input_button.press
+    data: {}
+    target:
+      entity_id: input_button.dishwasher_toggler
+  mode: single
+- id: '1655628839887'
+  alias: Dishwasher - Dishwasher Complete
+  description: ''
+  trigger:
+  - type: power
+    platform: device
+    device_id: aa6e56205eb60b918a02ba9454e41a29
+    entity_id: sensor.dishwasher_power
+    domain: sensor
+    above: 15
+  condition:
+  - condition: state
+    entity_id: var.dishwasher_cycle_count
+    state: '13'
+  action:
+  - service: input_boolean.turn_off
+    data: {}
+    target:
+      entity_id: input_boolean.dishwasher_on
+  - service: timer.cancel
+    data: {}
+    target:
+      entity_id: timer.dishwasher_timer
+  - service: input_boolean.turn_on
+    data: {}
+    target:
+      entity_id: input_boolean.dishes_clean
+  - service: var.set
+    data:
+      entity_id: var.dishwasher_cycle_count
+      value: 1
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - service: light.turn_on
+    data_template:
+      transition: 1
+      rgb_color:
+      - '{{ states.var.dishwasher_light_color.state.split(",")[0] }}'
+      - '{{ states.var.dishwasher_light_color.state.split(",")[1] }}'
+      - '{{ states.var.dishwasher_light_color.state.split(",")[2] }}'
+    target:
+      entity_id: light.dishwasher_light
+  - service: input_text.set_value
+    data:
+      value: The Dishes Are Complete
+    target:
+      entity_id: input_text.say_everywhere_text
+  - service: input_button.press
+    data: {}
+    target:
+      entity_id: input_button.say_everywhere_trigger
+  mode: single
+- id: '1655630101311'
+  alias: Dishwasher - Light Blue Blink While Running
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - input_boolean.dishwasher_on
+    to: 'on'
+  condition: []
+  action:
+  - repeat:
+      until:
+      - condition: state
+        entity_id: input_boolean.dishwasher_on
+        state: 'off'
+      sequence:
+      - service: light.toggle
+        data_template:
+          transition: 1
+          rgb_color:
+          - '{{ states.var.dishwasher_light_color.state.split(",")[0] }}'
+          - '{{ states.var.dishwasher_light_color.state.split(",")[1] }}'
+          - '{{ states.var.dishwasher_light_color.state.split(",")[2] }}'
+        target:
+          entity_id: light.dishwasher_light
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+  mode: single
+- id: '1655659457314'
+  alias: Utils - One Second Updater
+  description: ''
+  trigger:
+  - platform: time_pattern
+    seconds: '10'
+  condition: []
+  action:
+  - service: homeassistant.update_entity
+    data: {}
+    target:
+      entity_id:
+      - sensor.dishwasher_time_display
+  mode: single
+- id: '1655696383333'
+  alias: Dishwasher - Change Light Color if Color Var changes
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - var.dishwasher_light_color
+  condition:
+  - condition: device
+    type: is_on
+    device_id: 92df7ced3f7092b6c00f31a01bcb070c
+    entity_id: light.dishwasher_light
+    domain: light
+  action:
+  - service: light.turn_on
+    data_template:
+      transition: 1
+      rgb_color:
+      - '{{ states.var.dishwasher_light_color.state.split(",")[0] }}'
+      - '{{ states.var.dishwasher_light_color.state.split(",")[1] }}'
+      - '{{ states.var.dishwasher_light_color.state.split(",")[2] }}'
+    target:
+      entity_id: light.dishwasher_light
+  mode: single
+- id: '1655696452733'
+  alias: Dishwasher - Turn off Light when Door is Closed
+  description: ''
+  trigger:
+  - type: not_opened
+    platform: device
+    device_id: 531554f1829a39e4d3fa75f421a0c172
+    entity_id: binary_sensor.dishwasher_door_contact
+    domain: binary_sensor
+  condition: []
+  action:
+  - service: light.turn_off
+    data_template:
+      transition: 1
+    target:
+      entity_id: light.dishwasher_light
+  mode: single
+- id: '1655696551637'
+  alias: Dishwasher - Set Dishes To Dirty When Door is Open for 1 minute
+  description: ''
+  trigger:
+  - type: opened
+    platform: device
+    device_id: 531554f1829a39e4d3fa75f421a0c172
+    entity_id: binary_sensor.dishwasher_door_contact
+    domain: binary_sensor
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
+  condition: []
+  action:
+  - service: input_boolean.turn_off
+    data: {}
+    target:
+      entity_id: input_boolean.dishes_clean
+  mode: single
+- id: '1655697093165'
+  alias: Dishwasher - Turn on Light when Door is Opened
+  description: ''
+  trigger:
+  - type: opened
+    platform: device
+    device_id: 531554f1829a39e4d3fa75f421a0c172
+    entity_id: binary_sensor.dishwasher_door_contact
+    domain: binary_sensor
+  condition: []
+  action:
+  - service: light.turn_on
+    data_template:
+      transition: 0
+      rgb_color:
+      - '{{ states.var.dishwasher_light_color.state.split(",")[0] }}'
+      - '{{ states.var.dishwasher_light_color.state.split(",")[1] }}'
+      - '{{ states.var.dishwasher_light_color.state.split(",")[2] }}'
+    target:
+      entity_id: light.dishwasher_light
+  mode: single
+- id: '1655838130383'
+  alias: Utils - Notify me when Say Everywhere is clicked
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - input_button.say_everywhere_trigger
+  condition:
+  - condition: not
+    conditions:
+    - condition: state
+      entity_id: input_text.say_everywhere_text
+      state: ' '
+  action:
+  - service: notify.alexa_media
+    data_template:
+      title: '{{ states(''input_text.say_everywhere_text'') }}'
+      target: media_player.office_echo, media_player.matthew_s_echo_show, media_player.bathroom,
+        media_player.bedroom, media_player.cigar_room_echo, media_player.dining_room_echo,
+        media_player.downstairs_bathroom
+      data:
+        type: tts
+      message: '{{ states(''input_text.say_everywhere_text'') }}'
+  - service: input_text.set_value
+    data:
+      value: ' '
+    target:
+      entity_id: input_text.say_everywhere_text
+  mode: single
+- id: '1655857042265'
+  alias: Vacuum - Set Last Vacuum Run when vacuum starts
+  description: ''
+  trigger:
+  - platform: device
+    device_id: a2618427378c7a590d1218ffb6e1dbec
+    domain: vacuum
+    entity_id: vacuum.vacuum
+    type: cleaning
+  condition: []
+  action:
+  - service: input_datetime.set_datetime
+    data_template:
+      datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+    target:
+      entity_id: input_datetime.last_vacuum_run
+  mode: single
+- id: '1655857590500'
+  alias: Vacuum - Start Vacuum if I am not home
+  description: ''
+  trigger:
+  - platform: device
+    type: turned_off
+    device_id: e15b8202fc9e27ef4875856104848fd4
+    entity_id: switch.home_occupied
+    domain: switch
+  condition:
+  - condition: time
+    before: '22:00:00'
+    after: '12:00:00'
+  - condition: device
+    device_id: a2618427378c7a590d1218ffb6e1dbec
+    domain: vacuum
+    entity_id: vacuum.vacuum
+    type: is_docked
+  - condition: template
+    value_template: '{{ as_timestamp(states(''input_datetime.last_vacuum_run''))|float
+      <= (as_timestamp(now()) - (24*3600))|float }}'
+  action:
+  - device_id: a2618427378c7a590d1218ffb6e1dbec
+    domain: vacuum
+    entity_id: vacuum.vacuum
+    type: clean
+  mode: single
+- id: '1655857682769'
+  alias: Vacuum - Return To Dock when I get Home
+  description: ''
+  trigger:
+  - platform: device
+    type: turned_on
+    device_id: e15b8202fc9e27ef4875856104848fd4
+    entity_id: switch.home_occupied
+    domain: switch
+  condition:
+  - condition: device
+    device_id: a2618427378c7a590d1218ffb6e1dbec
+    domain: vacuum
+    entity_id: vacuum.vacuum
+    type: is_cleaning
+  action:
+  - device_id: a2618427378c7a590d1218ffb6e1dbec
+    domain: vacuum
+    entity_id: vacuum.vacuum
+    type: dock
+  mode: single
+- id: '1655857981355'
+  alias: Vacuum - Notify me if vacuum hasn't cleaned in 3 days
+  description: ''
+  trigger:
+  - platform: time
+    at: '12:00:00'
+  condition:
+  - condition: template
+    value_template: '{{ as_timestamp(states(''input_datetime.last_vacuum_run''))|float
+      <= (as_timestamp(now()) - (72*3600))|float }}'
+  - condition: device
+    type: is_on
+    device_id: e15b8202fc9e27ef4875856104848fd4
+    entity_id: switch.home_occupied
+    domain: switch
+  action:
+  - service: script.have_alexa_say
+    data:
+      thing_to_say: Vacuum hasn't run in a while, you should set it off
+  mode: single
