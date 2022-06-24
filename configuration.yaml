@@ -7,7 +7,8 @@ tts:
 
 automation: !include automations.yaml
 script: !include scripts.yaml
-scene: !include scenes.yaml
+scene default: !include scenes.yaml
+scene saved: !include scenes/snapshot.yaml
 nest:
   client_id: !secret nest_client_id
   client_secret: !secret nest_client_secret
@@ -37,3 +38,15 @@ homeassistant:
     - /media
     - /config/nest/event_media
     - /config/www
+logbook:
+  exclude:
+    entities:
+      - automation.util_one_second_updater
+notify:
+  - platform: file
+    name: scene_notify_snapshot
+    filename: /config/scenes/snapshot.yaml
+    timestamp: false
+browser_mod:
+  '3da81a2a-6ac98a3c': 
+    name: 'Desktop'

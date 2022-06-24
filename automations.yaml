@@ -101,7 +101,7 @@
   condition: []
   action:
   - type: turn_on
-    device_id: 3558181edaa8e71b61f2dc4e3e70901d
+    device_id: daf76bf5f02a10c9107f693e95e8669a
     entity_id: light.laundry_room_overhead
     domain: light
   mode: single
@@ -688,7 +688,7 @@
   condition:
   - condition: time
     before: '22:00:00'
-    after: '12:00:00'
+    after: '23:00:00'
   - condition: device
     device_id: a2618427378c7a590d1218ffb6e1dbec
     domain: vacuum
@@ -743,4 +743,40 @@
   - service: script.have_alexa_say
     data:
       thing_to_say: Vacuum hasn't run in a while, you should set it off
+  mode: single
+- id: '1655922547223'
+  alias: Utils - Areas Initialize
+  trigger:
+  - platform: homeassistant
+    event: start
+  action:
+  - service: input_select.set_options
+    data:
+      entity_id: input_select.area
+      options: "{% set ns = namespace(areas=[]) %}\n  {% for elm in states.light if\
+        \ not area_name(elm.entity_id) in ns.areas%}\n    {% if area_name(elm.entity_id)\
+        \ is not none %}\n      {% set ns.areas = ns.areas + [area_name(elm.entity_id)]\
+        \  %}\n    {% endif %}\n  {%- endfor %}\n{{ ns.areas }}          \n"
+  - service: input_select.set_options
+    data:
+      entity_id: input_select.light_group
+      options: '{{ states.light | selectattr(''attributes.entity_id'',''defined'')
+        | map(attribute=''entity_id'') | list }}'
+- id: '1655951298615'
+  alias: Dishwasher - Reset toggle on restart
+  description: ''
+  trigger:
+  - platform: homeassistant
+    event: start
+  condition: []
+  action:
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 30
+      milliseconds: 0
+  - service: var.set
+    data:
+      entity_id: var.dishwasher_cycle_count
+      value: 1
   mode: single

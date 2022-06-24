@@ -1,18 +1,18 @@
-'1655381206162':
+"1655381206162":
   sequence:
-  - service: scene.turn_on
-    target:
-      entity_id: scene.welcome_home
-    metadata: {}
-  - type: turn_on
-    device_id: 88cc3a491d72955d7a52219c0329d35c
-    entity_id: light.kitchen_lights
-    domain: light
-    brightness_pct: 100
-  - type: turn_on
-    device_id: ed97c29bebf0b2b618b8e8ed85a42563
-    entity_id: light.living_room_lamp
-    domain: light
+    - service: scene.turn_on
+      target:
+        entity_id: scene.welcome_home
+      metadata: {}
+    - type: turn_on
+      device_id: 88cc3a491d72955d7a52219c0329d35c
+      entity_id: light.kitchen_lights
+      domain: light
+      brightness_pct: 100
+    - type: turn_on
+      device_id: ed97c29bebf0b2b618b8e8ed85a42563
+      entity_id: light.living_room_lamp
+      domain: light
   mode: single
   alias: Welcome Me Home
 have_alexa_say:
@@ -20,13 +20,137 @@ have_alexa_say:
   variables:
     thing_to_say: default
   sequence:
-  - service: input_text.set_value
-    data_template:
-      value: '{{ thing_to_say }}'
-    target:
-      entity_id: input_text.say_everywhere_text
-  - service: input_button.press
-    data: {}
-    target:
-      entity_id: input_button.say_everywhere_trigger
+    - service: input_text.set_value
+      data_template:
+        value: "{{ thing_to_say }}"
+      target:
+        entity_id: input_text.say_everywhere_text
+    - service: input_button.press
+      data: {}
+      target:
+        entity_id: input_button.say_everywhere_trigger
   mode: single
+area_scene_snapshot:
+  alias: area_scene_snapshot
+  fields:
+    area:
+      description: Area
+      example: Living room
+    group:
+      description: Group of lights to add to dialog
+      example: light.living_room
+    description:
+      description: description to save with
+      example: "at evening when curtains close"
+  variables:
+    entities: |
+      {%- set scene_entities = [] -%}
+      {%- if group is not defined or group is none -%}
+        {{ area_entities(area) | select('match','^light\.') | list }}
+      {%- else -%}
+        {{ state_attr(group, 'entity_id') | list }}
+      {%- endif -%}
+    mytime: |-
+      {{ states('sensor.date_time_iso') | regex_replace(find='[^\\dT]', replace='') | replace('T','_') }}
+
+    desc: |-
+      {{  iif(description is not defined or description is none,states('input_text.scene_snapshot_desc'),description) }}
+
+    snap: |-
+      snap_{{ (iif(group is not defined or group is none, area, group) ) | regex_replace(find='[^\\w]', replace='_') | lower }}_{{ mytime }}_{{ desc | regex_replace(find='[^\\w]', replace='_') | lower }}
+
+  sequence:
+    - choose:
+        - conditions: "{{ entities | length == 0 }}"
+          sequence:
+            - service: script.debug
+              data_template:
+                source: script.area_scene_snapshot
+                title: Invalid group or area
+                message: |
+                  Group {{ group }} or area {{ area }} has no entities
+      default:
+        - service: notify.scene_notify_snapshot
+          data_template:
+            message: |
+              - id: {{ snap }}
+                name: {{ snap }}
+                # description: {{ desc }} 
+                # saved: {{ states('sensor.time_date') }} ({{ states('sensor.time_of_day') }})
+                # illuminance:
+                {% for item in states.sensor | selectattr('attributes.device_class', 'eq', 'illuminance') | list -%}
+                #   {{ item.entity_id }}: {{ states(item.entity_id) }}
+                {% endfor -%}
+                # covers:
+                {% for item in states.cover -%}
+                #   {{ item.entity_id }}: {{ state_attr(item.entity_id,'current_position') }}  # {{ states(item.entity_id) }} 
+                {% endfor -%}
+                # condition: 
+                #   sun: "{{ states('sun.sun') }}"
+                #   elevation: {{ state_attr('sun.sun', 'elevation') }} degrees
+                #   rain: {{ states('sensor.my_rainmeter_rain') }} mm
+                #   weather: "{{ states('sensor.buienradar_condition') }}"
+                entities: 
+                  {%- set scene_entities = [] -%}
+                  {%- for l in entities %}
+                  {{ l }}:
+                    state: "{{ states(l) }}"
+                    {%- if not is_state(l,'off') -%}
+                      {%- for attr in states[l].attributes -%}
+                        {%- if not attr in ['friendly_name', 'effect_list', 'update', 'update_available', 'linkquality', 'supported_features', 'icon', 'min_mireds', 'max_mireds', 'supported_color_modes'] %}
+                    {{ attr }}: {{ " " }} 
+                          {%- if states[l].attributes[attr] is string or states[l].attributes[attr] is number -%}
+                            {{ states[l].attributes[attr] }}  
+                          {%- elif states[l].attributes[attr] is mapping -%}
+                            {%- for value in states[l].attributes[attr] %}
+                      {{ value }}: {{ states[l].attributes[attr][value] }}
+                            {%- endfor -%}  
+                          {%- elif states[l].attributes[attr] is iterable -%}
+                            {%- for value in states[l].attributes[attr] %}
+                      - {{ value }}
+                            {%- endfor -%}  
+                          {% endif %}                    
+                        {%- endif %}
+                      {%- endfor %}
+                    {%- endif %}
+                  {%- endfor %}
+        - service: scene.reload
+        - service: script.debug
+          data_template:
+            source: script.area_scene_snapshot
+            title: Group or area saved
+            message: |
+              {% if group is defined and group is not none %}
+                Group {{ group }} saved to {{ snap }}
+              {% else %}
+                Area {{ area }} saved to {{ snap }}
+              {% endif %}
+area_snapshot_for_area:
+  alias: area_snapshot_for_area
+  sequence:
+    - service: script.area_scene_snapshot
+      data_template:
+        area: "{{ states('input_select.area') }}"
+        description: "{{ states('input_text.scene_snapshot_desc') }}"
+
+area_snapshot_for_group:
+  alias: area_snapshot_for_group
+  sequence:
+    - service: script.area_scene_snapshot
+      data_template:
+        group: "{{ states('input_select.light_group') }}"
+        description: "{{ states('input_text.scene_snapshot_desc') }}"
+debug:
+  alias: debug
+  fields:
+    source:
+      description: Source of the debug
+    title:
+      description: Title
+    message:
+      description: Messsage to be seen
+  sequence:
+    - service: system_log.write
+      data_template:
+        message: "{{source}} | {{title}}: {{message}}"
+        level: info
