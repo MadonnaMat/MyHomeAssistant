@@ -33,6 +33,7 @@ cloud:
         - media_player
         - input_boolean
         - binary_sensor
+        - script
 homeassistant:
   allowlist_external_dirs:
     - /media
@@ -48,5 +49,7 @@ notify:
     filename: /config/scenes/snapshot.yaml
     timestamp: false
 browser_mod:
-  '3da81a2a-6ac98a3c': 
-    name: 'Desktop'
+  "3da81a2a-6ac98a3c":
+    name: "Desktop"
+withings:
+  use_webhook: true

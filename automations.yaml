@@ -82,7 +82,7 @@
   action:
   - service: light.turn_on
     data:
-      transition: 2
+      transition: 60
     target:
       entity_id: light.living_room_lights
   mode: single
@@ -186,6 +186,10 @@
       preset_mode: none
     target:
       entity_id: climate.office_ac
+  - service: homeassistant.reload_config_entry
+    data: {}
+    target:
+      device_id: 5ebcfb66b67eb9b663f05eeea4c106ed
   mode: single
 - id: '1655340272174'
   alias: Front Door - When front door is unlocked for 10 minutes, lock it
@@ -280,13 +284,16 @@
   - condition: time
     before: '12:00:00'
     after: 04:00:00
+    enabled: true
   action:
   - service: media_player.play_media
     data:
       media_content_id: start my day
       media_content_type: routine
     target:
-      entity_id: media_player.matthew_s_echo_show
+      entity_id:
+      - media_player.bedroom
+      - media_player.matthew_s_echo_show
   - delay:
       hours: 0
       minutes: 10
@@ -649,7 +656,7 @@
       title: '{{ states(''input_text.say_everywhere_text'') }}'
       target: media_player.office_echo, media_player.matthew_s_echo_show, media_player.bathroom,
         media_player.bedroom, media_player.cigar_room_echo, media_player.dining_room_echo,
-        media_player.downstairs_bathroom
+        media_player.downstairs_bathroom, media_player.matthew_s_fire_tv
       data:
         type: tts
       message: '{{ states(''input_text.say_everywhere_text'') }}'
@@ -779,4 +786,25 @@
     data:
       entity_id: var.dishwasher_cycle_count
       value: 1
+  mode: single
+- id: '1656248823144'
+  alias: Living Room - Switch to HDMI In after TV turns on
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - binary_sensor.lg_tv
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 5
+  condition: []
+  action:
+  - service: remote.send_command
+    data:
+      device: soundbar
+      command: hdmi in
+    target:
+      entity_id: remote.living_room_remote_remote
   mode: single
