@@ -78,6 +78,10 @@
     entity_id:
     - media_player.fire_tv_192_168_86_27
     from: playing
+    for:
+      hours: 0
+      minutes: 1
+      seconds: 0
   condition: []
   action:
   - service: light.turn_on
@@ -108,27 +112,27 @@
 - id: '1655251482058'
   alias: Laundry Room - Turn off laundry light an hour after dryer completes
   description: ''
-  trigger:
+  triggers:
   - type: turned_on
-    platform: device
     device_id: 6b4906066cd34d7691244cb1c47f09dc
     entity_id: binary_sensor.dryer_dry_completed
     domain: binary_sensor
-  condition: []
-  action:
+    for:
+      hours: 0
+      minutes: 30
+      seconds: 0
+    trigger: device
+  conditions: []
+  actions:
   - delay:
       hours: 1
       minutes: 0
       seconds: 0
       milliseconds: 0
-  - type: turn_off
-    device_id: 3558181edaa8e71b61f2dc4e3e70901d
-    entity_id: light.laundry_room_overhead
-    domain: light
-  - service: light.turn_off
-    data: {}
+  - data: {}
     target:
       device_id: daf76bf5f02a10c9107f693e95e8669a
+    action: light.turn_off
   mode: single
 - id: '1655296938164'
   alias: Security - Set lights to Welcome Me Home when Guard is turned off
@@ -140,20 +144,24 @@
     to: disarmed
   condition: []
   action:
-  - service: scene.turn_on
-    target:
-      entity_id: scene.welcome_home
-    metadata: {}
   - type: turn_on
     device_id: 88cc3a491d72955d7a52219c0329d35c
     entity_id: light.kitchen_lights
     domain: light
     brightness_pct: 100
-  - type: turn_on
-    device_id: ed97c29bebf0b2b618b8e8ed85a42563
-    entity_id: light.living_room_lamp
-    domain: light
-    brightness_pct: 100
+  - if:
+    - condition: sun
+      after: sunset
+    then:
+    - service: scene.turn_on
+      target:
+        entity_id: scene.snap_light_living_room_lights_warm_and_cool
+      metadata: {}
+    else:
+    - service: scene.turn_on
+      target:
+        entity_id: scene.snap_light_downstairs_lights_welcome_home
+      metadata: {}
   mode: single
 - id: '1655314600301'
   alias: Security, Office- Set AC to away when Guard is activated
@@ -194,21 +202,26 @@
 - id: '1655340272174'
   alias: Front Door - When front door is unlocked for 10 minutes, lock it
   description: ''
-  trigger:
-  - platform: device
-    device_id: 58166dcae9fd95cdc01bb486db7065da
+  triggers:
+  - device_id: 8123aeaa6afb71773030f4393be3b676
     domain: lock
-    entity_id: lock.entryway_lock
+    entity_id: 58312b97928df1be207c2b2caa790ec7
     type: unlocked
+    trigger: device
     for:
       hours: 0
       minutes: 10
       seconds: 0
-  condition: []
-  action:
-  - device_id: 58166dcae9fd95cdc01bb486db7065da
+  conditions:
+  - type: is_not_open
+    condition: device
+    device_id: bcb83bc6e99d8a2d91d70020b5a5e236
+    entity_id: binary_sensor.front_door_sensor_contact
+    domain: binary_sensor
+  actions:
+  - device_id: 8123aeaa6afb71773030f4393be3b676
     domain: lock
-    entity_id: lock.entryway_lock
+    entity_id: 58312b97928df1be207c2b2caa790ec7
     type: lock
   mode: single
 - id: '1655340355220'
@@ -223,22 +236,6 @@
   condition: []
   action:
   - service: alarm_control_panel.alarm_arm_away
-    data: {}
-    target:
-      entity_id: alarm_control_panel.alexa_guard_dec4f
-  mode: single
-- id: '1655340396941'
-  alias: Security - When Google says I'm home, tell Amazon I'm home
-  description: ''
-  trigger:
-  - platform: device
-    type: turned_on
-    device_id: e15b8202fc9e27ef4875856104848fd4
-    entity_id: switch.home_occupied
-    domain: switch
-  condition: []
-  action:
-  - service: alarm_control_panel.alarm_disarm
     data: {}
     target:
       entity_id: alarm_control_panel.alexa_guard_dec4f
@@ -292,7 +289,6 @@
       media_content_type: routine
     target:
       entity_id:
-      - media_player.bedroom
       - media_player.matthew_s_echo_show
   - delay:
       hours: 0
@@ -300,7 +296,8 @@
       seconds: 0
       milliseconds: 0
   - service: script.1655381206162
-    data: {}
+    data:
+      transition: 600
   initial_state: true
   mode: single
 - id: '1655416005293'
@@ -347,29 +344,24 @@
           milliseconds: 0
   mode: single
 - id: '1655469147781'
-  alias: Front Door, Living Room - Show Person if seen
+  alias: Front Door - Show Person if seen
   description: ''
-  trigger:
-  - platform: device
-    device_id: 2ac27d26e5c53562439237fefcd006f9
+  triggers:
+  - device_id: 2ac27d26e5c53562439237fefcd006f9
     domain: nest
     type: camera_person
-  condition: []
-  action:
-  - service: camera.snapshot
-    data:
+    trigger: device
+  conditions: []
+  actions:
+  - data:
       filename: /config/www/PersonSeen.jpg
     target:
       entity_id: camera.front_door
-  - service: notify.android_tv_fire_tv
-    data:
-      title: Person Detected
-      data:
-        position: bottom-right
-        duration: 10
-        image:
-          path: /config/www/PersonSeen.jpg
-      message: Front Door
+    action: camera.snapshot
+  - data:
+      thing_to_say: Somebody is near the door
+      image: https://sa9b85p4k60hiiuea2wfvjoqancmop9v.ui.nabu.casa/local/PersonSeen.jpg
+    action: script.show_image_on_devices
   mode: single
 - id: '1655626707636'
   alias: Dishwasher - Dishwasher Turned On
@@ -468,7 +460,7 @@
   condition:
   - condition: state
     entity_id: var.dishwasher_cycle_count
-    state: '13'
+    state: '7'
   action:
   - service: input_boolean.turn_off
     data: {}
@@ -651,14 +643,33 @@
       entity_id: input_text.say_everywhere_text
       state: ' '
   action:
-  - service: notify.alexa_media
+  - if:
+    - condition: device
+      type: is_off
+      device_id: e15b8202fc9e27ef4875856104848fd4
+      entity_id: switch.home_occupied
+      domain: switch
+    then:
+    - service: notify.mobile_app_sm_f711u1
+      data_template:
+        message: '{{ states(''input_text.say_everywhere_text'') }}'
+    else:
+    - service: notify.alexa_media
+      data_template:
+        title: '{{ states(''input_text.say_everywhere_text'') }}'
+        target: media_player.office_echo, media_player.matthew_s_echo_show, media_player.bathroom,
+          media_player.bedroom, media_player.cigar_room_echo, media_player.dining_room_echo,
+          media_player.downstairs_bathroom, media_player.matthew_s_fire_tv, media_player.matthew_s_2nd_echo_show
+        data:
+          type: tts
+        message: '{{ states(''input_text.say_everywhere_text'') }}'
+  - if:
+    - condition: state
+      entity_id: binary_sensor.lg_tv
+      state: 'on'
+    then: []
+  - service: notify.hass_agent_office
     data_template:
-      title: '{{ states(''input_text.say_everywhere_text'') }}'
-      target: media_player.office_echo, media_player.matthew_s_echo_show, media_player.bathroom,
-        media_player.bedroom, media_player.cigar_room_echo, media_player.dining_room_echo,
-        media_player.downstairs_bathroom, media_player.matthew_s_fire_tv
-      data:
-        type: tts
       message: '{{ states(''input_text.say_everywhere_text'') }}'
   - service: input_text.set_value
     data:
@@ -701,10 +712,16 @@
     domain: vacuum
     entity_id: vacuum.vacuum
     type: is_docked
-  - condition: template
-    value_template: '{{ as_timestamp(states(''input_datetime.last_vacuum_run''))|float
-      <= (as_timestamp(now()) - (24*3600))|float }}'
   action:
+  - service: homeassistant.reload_config_entry
+    data: {}
+    target:
+      device_id: a2618427378c7a590d1218ffb6e1dbec
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
   - device_id: a2618427378c7a590d1218ffb6e1dbec
     domain: vacuum
     entity_id: vacuum.vacuum
@@ -726,6 +743,15 @@
     entity_id: vacuum.vacuum
     type: is_cleaning
   action:
+  - service: homeassistant.reload_config_entry
+    data: {}
+    target:
+      device_id: a2618427378c7a590d1218ffb6e1dbec
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
   - device_id: a2618427378c7a590d1218ffb6e1dbec
     domain: vacuum
     entity_id: vacuum.vacuum
@@ -760,10 +786,10 @@
   - service: input_select.set_options
     data:
       entity_id: input_select.area
-      options: "{% set ns = namespace(areas=[]) %}\n  {% for elm in states.light if\
-        \ not area_name(elm.entity_id) in ns.areas%}\n    {% if area_name(elm.entity_id)\
-        \ is not none %}\n      {% set ns.areas = ns.areas + [area_name(elm.entity_id)]\
-        \  %}\n    {% endif %}\n  {%- endfor %}\n{{ ns.areas }}          \n"
+      options: "{% set ns = namespace(areas=[]) %}\n  {% for elm in states.light if
+        not area_name(elm.entity_id) in ns.areas%}\n    {% if area_name(elm.entity_id)
+        is not none %}\n      {% set ns.areas = ns.areas + [area_name(elm.entity_id)]
+        \ %}\n    {% endif %}\n  {%- endfor %}\n{{ ns.areas }}          \n"
   - service: input_select.set_options
     data:
       entity_id: input_select.light_group
@@ -790,21 +816,741 @@
 - id: '1656248823144'
   alias: Living Room - Switch to HDMI In after TV turns on
   description: ''
-  trigger:
-  - platform: state
-    entity_id:
+  triggers:
+  - entity_id:
     - binary_sensor.lg_tv
     to: 'on'
     for:
       hours: 0
       minutes: 0
       seconds: 5
-  condition: []
-  action:
-  - service: remote.send_command
-    data:
+    trigger: state
+  conditions: []
+  actions:
+  - data:
       device: soundbar
       command: hdmi in
     target:
       entity_id: remote.living_room_remote_remote
+    action: remote.send_command
+  - type: turn_on
+    device_id: c65421ff7d20ef09605bc702e3e63633
+    entity_id: light.rgbic_tv_backlight
+    domain: light
+    brightness_pct: 100
+  - action: input_boolean.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_boolean.govee_backlight
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 1
+      milliseconds: 0
+  - action: input_boolean.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id: input_boolean.govee_backlight
+  mode: single
+- id: '1656354113886'
+  alias: Office - Turn on office lights in the morning
+  description: ''
+  trigger:
+  - platform: time
+    at: 08:00:00
+  condition:
+  - condition: time
+    weekday:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+  - condition: device
+    type: is_on
+    device_id: e15b8202fc9e27ef4875856104848fd4
+    entity_id: switch.home_occupied
+    domain: switch
+  action:
+  - service: scene.turn_on
+    target:
+      entity_id: scene.snap_light_upstairs_lights_morning_office
+    metadata: {}
+  mode: single
+- id: '1656354160383'
+  alias: Office - Turn on office lights in the afternoon
+  description: ''
+  trigger:
+  - platform: time
+    at: '13:30:00'
+  condition:
+  - condition: time
+    weekday:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+  - condition: device
+    type: is_on
+    device_id: e15b8202fc9e27ef4875856104848fd4
+    entity_id: switch.home_occupied
+    domain: switch
+  action:
+  - service: scene.turn_on
+    target:
+      entity_id: scene.snap_light_upstairs_lights_afternoon_office
+    metadata: {}
+  mode: single
+- id: '1656990473297'
+  alias: Utils - Reload Entities Nightly
+  description: ''
+  trigger:
+  - platform: time
+    at: 01:00:00
+  condition: []
+  action:
+  - service: homeassistant.reload_config_entry
+    data: {}
+    target:
+      device_id: a2618427378c7a590d1218ffb6e1dbec
+  - service: homeassistant.reload_config_entry
+    data: {}
+    target:
+      entity_id: camera.front_door
+  mode: single
+- id: '1657130833425'
+  alias: Living Room - Switch to Warm And Cool at Sunset
+  description: ''
+  triggers:
+  - event: sunset
+    offset: 0
+    trigger: sun
+  conditions:
+  - condition: device
+    type: is_on
+    device_id: e15b8202fc9e27ef4875856104848fd4
+    entity_id: switch.home_occupied
+    domain: switch
+  - condition: device
+    type: is_on
+    device_id: 7d926de8d03469fba50fe2ea202a5306
+    entity_id: light.living_room_1
+    domain: light
+  actions:
+  - data:
+      transition: 60
+    target:
+      entity_id: scene.snap_light_living_room_lights_warm_and_cool
+    action: scene.turn_on
+  - delay:
+      hours: 0
+      minutes: 1
+      seconds: 5
+      milliseconds: 0
+  - action: scene_presets.start_dynamic_scene
+    data:
+      preset_id: 3984c3b7-6608-482f-84be-d2ffe39dbb1a
+      targets:
+        device_id:
+        - 7685dbcb98335b545779107d745218ed
+        - 7d926de8d03469fba50fe2ea202a5306
+        - 57bbf074407cfca0302458ff8c673766
+        - 5775955bf5b12c7c2e7fc49b7b3fafba
+        - 9624eb8141e76a2f42b97eba10bf59f1
+      brightness: 217
+      transition: 45
+      interval: 60
+  mode: single
+- id: '1657201764494'
+  alias: Front Door - Announce When Doorbell Pressed
+  description: ''
+  triggers:
+  - device_id: 2ac27d26e5c53562439237fefcd006f9
+    domain: nest
+    type: doorbell_chime
+    trigger: device
+  conditions: []
+  actions:
+  - data:
+      value: Somebody is at the door
+    target:
+      entity_id: input_text.say_everywhere_text
+    action: input_text.set_value
+  - data: {}
+    target:
+      entity_id: input_button.say_everywhere_trigger
+    action: input_button.press
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 2
+      milliseconds: 0
+  - data:
+      filename: /config/www/DoorbellRang.jpg
+    target:
+      entity_id: camera.front_door
+    action: camera.snapshot
+  - data:
+      data:
+        position: bottom-right
+        duration: 10
+        image:
+          path: /config/www/PersonSeen.jpg
+      message: Somebody is at the door
+      title: Doorbell Rang
+    enabled: false
+    action: notify.android_tv_fire_tv
+  - data:
+      thing_to_say: Somebody is at the door
+      image: https://sa9b85p4k60hiiuea2wfvjoqancmop9v.ui.nabu.casa/local/DoorbellRang.jpg
+    action: script.show_image_on_devices
+  mode: single
+- id: '1657214073708'
+  alias: Office - Set Backlight to streaming mode
+  description: ''
+  trigger:
+  - type: turned_on
+    platform: device
+    device_id: c78802582ab63e617debd7c012876268
+    entity_id: binary_sensor.office_desktop_webcamactive
+    domain: binary_sensor
+  condition: []
+  action:
+  - service: scene.create
+    data:
+      scene_id: office_current
+      snapshot_entities: light.office_lamp
+  - service: scene.turn_on
+    data:
+      transition: 10
+    target:
+      entity_id: scene.snap_office_streaming
+  mode: single
+- id: '1657214118214'
+  alias: Office - Set Backlight back to regular
+  description: ''
+  trigger:
+  - type: turned_off
+    platform: device
+    device_id: c78802582ab63e617debd7c012876268
+    entity_id: binary_sensor.office_desktop_webcamactive
+    domain: binary_sensor
+  condition: []
+  action:
+  - service: scene.turn_on
+    data:
+      transition: 10
+    target:
+      entity_id: scene.office_current
+  mode: single
+- id: '1657281319470'
+  alias: Office - Turn on Fan Mode if AC is Frozen
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - climate.d828c91dc9cd_climate
+    for:
+      hours: 1
+      minutes: 30
+      seconds: 0
+    to: cool
+  condition:
+  - condition: state
+    entity_id: climate.office_ac
+    state: cool
+  action:
+  - service: climate.set_hvac_mode
+    data:
+      hvac_mode: fan_only
+    target:
+      entity_id: climate.d828c91dc9cd_climate
+  - service: script.have_alexa_say
+    data:
+      thing_to_say: AC is Frozen, turning on fan mode
+  - delay:
+      hours: 0
+      minutes: 1
+      seconds: 0
+      milliseconds: 0
+  - service: input_boolean.turn_on
+    data: {}
+    target:
+      entity_id: input_boolean.office_ac_frozen
+  mode: single
+- id: '1657511946923'
+  alias: Office - Turn On AC When Thawed
+  description: ''
+  trigger:
+  - type: temperature
+    platform: device
+    device_id: 3bd83f656b53ac61bc3292b181f947aa
+    entity_id: sensor.d828c91dc9cd_ac_ambient_temperature
+    domain: sensor
+    above: 70
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+  - type: temperature
+    platform: device
+    device_id: 3bd83f656b53ac61bc3292b181f947aa
+    entity_id: sensor.d828c91dc9cd_ac_ambient_temperature
+    domain: sensor
+    above: 75
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+  - platform: state
+    entity_id:
+    - input_boolean.office_ac_frozen
+    to: 'on'
+    for:
+      hours: 1
+      minutes: 30
+      seconds: 0
+  condition:
+  - condition: state
+    entity_id: input_boolean.office_ac_frozen
+    state: 'on'
+  action:
+  - delay:
+      hours: 0
+      minutes: 10
+      seconds: 0
+      milliseconds: 0
+  - service: input_boolean.turn_off
+    data: {}
+    target:
+      entity_id: input_boolean.office_ac_frozen
+  - service: climate.set_hvac_mode
+    data:
+      hvac_mode: cool
+    target:
+      entity_id: climate.d828c91dc9cd_climate
+  mode: single
+- id: '1657990397150'
+  alias: Front Door - When Front Door is Closed for 10 minutes Lock It
+  description: ''
+  triggers:
+  - type: not_opened
+    device_id: bcb83bc6e99d8a2d91d70020b5a5e236
+    entity_id: binary_sensor.front_door_sensor_contact
+    domain: binary_sensor
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+    trigger: device
+  conditions: []
+  actions:
+  - device_id: 8123aeaa6afb71773030f4393be3b676
+    domain: lock
+    entity_id: 63b7e6912450f4d4791c0b9e1fd4c31e
+    type: lock
+  mode: single
+- id: '1657990686050'
+  alias: Front Door - Send Notification if Door is Open after Leaving
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - device_tracker.motorola_razr_plus_2023
+    from:
+    to: not_home
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+  conditions:
+  - type: is_open
+    condition: device
+    device_id: bcb83bc6e99d8a2d91d70020b5a5e236
+    entity_id: binary_sensor.front_door_sensor_contact
+    domain: binary_sensor
+  actions:
+  - data:
+      thing_to_say: Front Door is Open, Return home and Shut it
+    action: script.have_alexa_say
+  mode: single
+- id: '1657990738162'
+  alias: Back Door - Send Notification if Door is Open after Leaving
+  description: ''
+  trigger:
+  - platform: device
+    type: turned_off
+    device_id: e15b8202fc9e27ef4875856104848fd4
+    entity_id: switch.home_occupied
+    domain: switch
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 0
+  condition:
+  - type: is_open
+    condition: device
+    device_id: fac1f28d06bac254651a968eee8270bb
+    entity_id: binary_sensor.back_door_sensor_contact
+    domain: binary_sensor
+  action:
+  - service: script.have_alexa_say
+    data:
+      thing_to_say: Back Door is Open, Return home and Shut it
+  mode: single
+- id: '1657990806385'
+  alias: Back Door - When Back Door is Closed for 10 minutes Lock It
+  description: ''
+  trigger:
+  - type: not_opened
+    platform: device
+    device_id: fac1f28d06bac254651a968eee8270bb
+    entity_id: binary_sensor.back_door_sensor_contact
+    domain: binary_sensor
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+  condition: []
+  action:
+  - service: lock.lock
+    data: {}
+    target:
+      entity_id: lock.back_door
+  mode: single
+- id: '1657990997333'
+  alias: Back Door - When back door is unlocked for 10 minutes, lock it
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - lock.back_door
+    to: unlocked
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+  condition:
+  - type: is_not_open
+    condition: device
+    device_id: fac1f28d06bac254651a968eee8270bb
+    entity_id: binary_sensor.back_door_sensor_contact
+    domain: binary_sensor
+  action:
+  - service: lock.lock
+    data: {}
+    target:
+      entity_id: lock.back_door
+  mode: single
+- id: '1689300722347'
+  alias: Living Room - Turn of Backlight when tv turns off
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - binary_sensor.lg_tv
+    to: 'off'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 5
+  condition: []
+  action:
+  - type: turn_off
+    device_id: c65421ff7d20ef09605bc702e3e63633
+    entity_id: light.rgbic_tv_backlight
+    domain: light
+  mode: single
+- id: '1707260584632'
+  alias: Cigar Room - Turn off Fireplace if it has run for over an hour
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - climate.cigar_room_fireplace
+    attribute: hvac_action
+    from: 'off'
+    to: heating
+    for:
+      hours: 1
+      minutes: 0
+      seconds: 0
+  condition: []
+  action:
+  - service: climate.turn_off
+    data: {}
+    target:
+      entity_id: climate.cigar_room_fireplace
+  mode: single
+- id: '1717886640074'
+  alias: Turn off Hifi if on Standby for an Hour
+  description: ''
+  trigger:
+  - platform: state
+    entity_id:
+    - var.hifi_state
+    to: standby
+    for:
+      hours: 1
+      minutes: 0
+      seconds: 0
+  condition: []
+  action:
+  - service: script.have_alexa_say
+    data:
+      thing_to_say: Turning off HiFi
+  - service: script.living_room_toggle_hifi
+    metadata: {}
+    data: {}
+  mode: single
+- id: '1733335428146'
+  alias: Wake Gaming PC on LAN
+  description: ''
+  triggers:
+  - entity_id:
+    - input_button.wake_gaming_pc
+    trigger: state
+  conditions: []
+  actions:
+  - metadata: {}
+    data:
+      broadcast_port: 9
+      mac: A8-5E-45-50-84-93
+    action: wake_on_lan.send_magic_packet
+  - metadata: {}
+    data:
+      broadcast_port: 9
+      mac: A4-CE-DA-3C-2C-F0
+    action: wake_on_lan.send_magic_packet
+  - type: toggle
+    device_id: 8183b331f6101f18b533b976302498a3
+    entity_id: 25da8b7096434f0679a4def5972bc9cd
+    domain: switch
+  mode: single
+- id: '1757300700263'
+  alias: Set Alarm if away from home
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - device_tracker.motorola_razr_plus_2023
+    from:
+    for:
+      hours: 0
+      minutes: 10
+      seconds: 0
+    to: not_home
+  conditions: []
+  actions:
+  - action: alarm_control_panel.alarm_arm_away
+    metadata: {}
+    data:
+      code: '419203'
+    target:
+      device_id: ea2b24598bcdccfcca116491ff5397ab
+  mode: single
+- id: '1757314416304'
+  alias: Spotify - Get Favorites
+  description: ''
+  triggers:
+  - trigger: time_pattern
+    hours: '6'
+  conditions: []
+  actions:
+  - action: spotifyplus.get_track_favorites
+    metadata: {}
+    data:
+      entity_id: media_player.spotifyplus_matthew_madonna
+      limit: 10
+      limit_total: 10
+    response_variable: track_favorites
+  - action: spotifyplus.get_playlist_favorites
+    metadata: {}
+    data:
+      entity_id: media_player.spotifyplus_matthew_madonna
+      limit: 10
+      limit_total: 10
+    response_variable: playlist_favorites
+  - action: var.set
+    metadata: {}
+    data:
+      entity_id: var.favorite_playlists
+      value: loaded
+      attributes:
+        list: '{{playlist_favorites | to_json}}'
+  - action: var.set
+    metadata: {}
+    data:
+      entity_id: var.favorite_tracks
+      value: loaded
+      attributes:
+        list: '{{track_favorites | to_json}}'
+  - action: input_select.set_options
+    data:
+      options: '{{ state_attr(''media_player.spotify_matthew_madonna'', ''source_list'')
+        | list }}
+
+        '
+    target:
+      entity_id: input_select.spotify_devices
+  mode: single
+- id: '1757520855907'
+  alias: Charge Mounted Tablet when < 30
+  description: ''
+  triggers:
+  - type: battery_level
+    device_id: c31784d37fad5eba98818a9ba40f9255
+    entity_id: aa61bbc1937a69200ebd84030fadccc3
+    domain: sensor
+    trigger: device
+    below: 30
+  conditions: []
+  actions:
+  - type: turn_on
+    device_id: 0b0e87bcb172a7e0e026c611f21c5399
+    entity_id: 7785fc44dc51d1c71559163c62b804c3
+    domain: switch
+  mode: single
+- id: '1757521290141'
+  alias: Discharge Mounted Tablet if > 80
+  description: ''
+  triggers:
+  - type: battery_level
+    device_id: c31784d37fad5eba98818a9ba40f9255
+    entity_id: aa61bbc1937a69200ebd84030fadccc3
+    domain: sensor
+    trigger: device
+    above: 80
+  conditions:
+  - condition: template
+    value_template: '{{ now().day != 1 }}'
+  actions:
+  - type: turn_off
+    device_id: 0b0e87bcb172a7e0e026c611f21c5399
+    entity_id: 7785fc44dc51d1c71559163c62b804c3
+    domain: switch
+  mode: single
+- id: '1757521584081'
+  alias: Discharge Mounted Tablet if > 99 on the 1st of the month
+  description: ''
+  triggers:
+  - type: battery_level
+    device_id: c31784d37fad5eba98818a9ba40f9255
+    entity_id: aa61bbc1937a69200ebd84030fadccc3
+    domain: sensor
+    trigger: device
+    above: 99
+  conditions:
+  - condition: template
+    value_template: '{{ now().day == 1 }}'
+  actions:
+  - type: turn_off
+    device_id: 0b0e87bcb172a7e0e026c611f21c5399
+    entity_id: 7785fc44dc51d1c71559163c62b804c3
+    domain: switch
+  mode: single
+- id: '1758841732236'
+  alias: Util - Refresh Tailscale
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - sensor.homeassistant_ip_address
+    to: unavailable
+    for:
+      hours: 0
+      minutes: 5
+      seconds: 0
+  conditions: []
+  actions:
+  - action: homeassistant.reload_config_entry
+    data:
+      entry_id: f43525b01ac67a793261419acf3f527e
+  mode: single
+- id: '1760794194404'
+  alias: PIR only when alarm is set
+  description: ''
+  triggers:
+  - device_id: ea2b24598bcdccfcca116491ff5397ab
+    domain: alarm_control_panel
+    entity_id: e71310597c7ed9efe80e57cef0e30622
+    type: arming
+    trigger: device
+  conditions: []
+  actions:
+  - device_id: 4e66bfc827eabb4c8d725871a02d783c
+    domain: select
+    entity_id: 7c3bc6afdd5f05433fa3503280ad7741
+    type: select_option
+    option: only_pir
+  - device_id: 763e50f873395f1ebd3b6caa80995fa8
+    domain: select
+    entity_id: 2a79c4fe367994fba9377f4deabb6e63
+    type: select_option
+    option: only_pir
+  - device_id: 935c6437d3feb62b910f1cdcfd710ca7
+    domain: select
+    entity_id: 6e4124754b50040b9ebc15acdf0219d1
+    type: select_option
+    option: only_pir
+  - device_id: 91e2a378ff62e7ae9e2a3d45c39e4631
+    domain: select
+    entity_id: 589b547eae295e619f5fdc0a1106df69
+    type: select_option
+    option: only_pir
+  - device_id: e173d58c3590c3d289a8c49fa5e2ec35
+    domain: select
+    entity_id: 1345ab23788896a1df439d6a92b01a28
+    type: select_option
+    option: only_pir
+  - device_id: e8fe8a9e30e840a97a8b0e657c208c09
+    domain: select
+    entity_id: 0813d4ab9bebec5f714f58ba588a94a3
+    type: select_option
+    option: only_pir
+  mode: single
+- id: '1760794330301'
+  alias: 'Turn on PIR and Radio when alarm disarmed '
+  description: ''
+  triggers:
+  - device_id: ea2b24598bcdccfcca116491ff5397ab
+    domain: alarm_control_panel
+    entity_id: e71310597c7ed9efe80e57cef0e30622
+    type: disarmed
+    trigger: device
+  conditions: []
+  actions:
+  - device_id: 4e66bfc827eabb4c8d725871a02d783c
+    domain: select
+    entity_id: 7c3bc6afdd5f05433fa3503280ad7741
+    type: select_option
+    option: pir_and_radar
+  - device_id: 763e50f873395f1ebd3b6caa80995fa8
+    domain: select
+    entity_id: 2a79c4fe367994fba9377f4deabb6e63
+    type: select_option
+    option: pir_and_radar
+  - device_id: 935c6437d3feb62b910f1cdcfd710ca7
+    domain: select
+    entity_id: 6e4124754b50040b9ebc15acdf0219d1
+    type: select_option
+    option: pir_and_radar
+  - device_id: 91e2a378ff62e7ae9e2a3d45c39e4631
+    domain: select
+    entity_id: 589b547eae295e619f5fdc0a1106df69
+    type: select_option
+    option: pir_and_radar
+  - device_id: e173d58c3590c3d289a8c49fa5e2ec35
+    domain: select
+    entity_id: 1345ab23788896a1df439d6a92b01a28
+    type: select_option
+    option: pir_and_radar
+  - device_id: e8fe8a9e30e840a97a8b0e657c208c09
+    domain: select
+    entity_id: 0813d4ab9bebec5f714f58ba588a94a3
+    type: select_option
+    option: pir_and_radar
   mode: single

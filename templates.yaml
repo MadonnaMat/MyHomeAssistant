@@ -1,0 +1,85 @@
+- binary_sensor:
+    - name: "Alexa HA - Fireplace Lamp"
+      unique_id: alexa_ha_fireplace_lamp
+      device_class: garage_door
+      state: "{{ is_state('input_boolean.home_assistant_fireplace', 'on') }}"
+# SpotifyPlus Search Media Template Sensor
+- trigger:
+    - platform: state
+      entity_id: input_text.spotifyplus_search_media_text
+  action:
+    - action: system_log.write
+      data:
+        level: info
+        logger: my_templates_automation
+        message: "Automation triggered: Update spotifyplus_search_media_result"
+    - action: media_player.search_media
+      data:
+        entity_id: media_player.spotifyplus_matthew_madonna
+        search_query: "{{ states('input_text.spotifyplus_search_media_text') }}"
+        media_filter_classes:
+          - album
+          - artist
+          - track
+      response_variable: service_response
+  sensor:
+    - name: spotifyplus_search_media_result
+      unique_id: spotifyplus_search_media_result
+      state: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+      attributes:
+        query: "{{ states('input_text.spotifyplus_search_media_text') }}"
+        foundItems: >
+          {% set first_key = service_response.keys() | list | first %}
+          {% set ns = namespace(foundItems=[]) %}
+          {%- for item in service_response[first_key]['result'] -%}
+            {%- set title = item['title'] | default('') -%}
+            {%- set thumbnail = item['thumbnail'] | default('') -%}
+            {%- set media_content_id = item['media_content_id'] | default('') -%}
+            {%- set media_content_type = item['media_content_type'] | default('') -%}
+            {%- set media_class = item['media_class'] | default('') -%}
+            {%- set foundItem = {'title': title, 'type': media_content_type, 'uri': media_content_id, 'image': thumbnail} -%}
+            {%- set ns.foundItems = ns.foundItems + [foundItem]  -%}
+          {%- endfor -%}
+          {{ ns.foundItems }}
+
+# Favorite Albums
+- trigger:
+    - platform: event
+      event_type: "spotifyplus_service_response"
+      event_data:
+        service: "get_album_favorites"
+  sensor:
+    - name: "SpotifyPlus Favorite Albums"
+      unique_id: spotifyplus_favorite_albums_sensor
+      icon: mdi:album
+      state: "{{ trigger.event.data.response_data.items | count if trigger.event.data.response_data.items is defined else 0 }}"
+      attributes:
+        items: "{{ trigger.event.data.response_data.items if trigger.event.data.response_data.items is defined else [] }}"
+
+# User Playlists
+- trigger:
+    - platform: event
+      event_type: "spotifyplus_service_response"
+      event_data:
+        service: "get_user_playlists"
+  sensor:
+    - name: "SpotifyPlus User Playlists"
+      unique_id: spotifyplus_user_playlists_sensor
+      icon: mdi:playlist-music
+      state: "{{ trigger.event.data.response_data.items | count if trigger.event.data.response_data.items is defined else 0 }}"
+      attributes:
+        items: "{{ trigger.event.data.response_data.items if trigger.event.data.response_data.items is defined else [] }}"
+
+# User Tracks
+- trigger:
+    - platform: event
+      event_type: "spotifyplus_service_response"
+      event_data:
+        service: "get_user_tracks"
+  sensor:
+    - name: "SpotifyPlus User Tracks"
+      unique_id: spotifyplus_user_tracks_sensor
+      icon: mdi:music-note
+      state: "{{ trigger.event.data.response_data.items | count if trigger.event.data.response_data.items is defined else 0 }}"
+      attributes:
+        items: "{{ trigger.event.data.response_data.items if trigger.event.data.response_data.items is defined else [] }}"

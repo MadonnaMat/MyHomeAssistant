@@ -5,7 +5,7 @@
       device_class: garage_door
       value_template: "{{ is_state('input_boolean.home_assistant_fireplace', 'on') }}"
 - platform: ping
-  host: "192.168.86.63"
+  host: "192.168.86.56"
   name: "lg_tv"
   scan_interval: 5
   count: 1

@@ -9,6 +9,7 @@ automation: !include automations.yaml
 script: !include scripts.yaml
 scene default: !include scenes.yaml
 scene saved: !include scenes/snapshot.yaml
+wake_on_lan:
 nest:
   client_id: !secret nest_client_id
   client_secret: !secret nest_client_secret
@@ -24,11 +25,13 @@ lock: !include locks.yaml
 sensor: !include sensors.yaml
 binary_sensor: !include binary_sensors.yaml
 var: !include var.yaml
+template: !include templates.yaml
 cloud:
   alexa:
     filter:
       include_domains:
         - switch
+        - button
         - light
         - media_player
         - input_boolean
@@ -48,8 +51,15 @@ notify:
     name: scene_notify_snapshot
     filename: /config/scenes/snapshot.yaml
     timestamp: false
+  - name: "hass agent office"
+    platform: hass_agent_notifier
+    resource: http://192.168.86.50:5115/notify
 browser_mod:
   "3da81a2a-6ac98a3c":
     name: "Desktop"
-withings:
-  use_webhook: true
+command_line:
+  - sensor:
+      unique_id: wan_address
+      name: WAN Address
+      command: "wget -O - -q https://checkip.amazonaws.com"
+      scan_interval: 30

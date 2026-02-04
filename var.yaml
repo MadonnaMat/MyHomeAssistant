@@ -2,7 +2,7 @@ dishwasher_cycle_count:
   friendly_name: "Dishwasher Cycle Count"
   initial_value: 0
   value_template: >-
-    {% if (states('var.dishwasher_cycle_count') | int) < 13 %}
+    {% if (states('var.dishwasher_cycle_count') | int) < 7 %}
       {{ (states('var.dishwasher_cycle_count') | int) + 1 }}
     {% else %}
       1
@@ -42,3 +42,25 @@ dishwasher_light_color:
     - var.dishwasher_cycle_count
     - input_boolean.dishwasher_on
     - input_boolean.dishes_clean
+
+hifi_state:
+  initial_value: "off"
+  value_template: >-
+    {% if (states('sensor.sonoff_1001e012bb_power') | int < 20) %}
+      off
+    {% elif (states('sensor.sonoff_1001e012bb_power') | int < 22) %}
+      standby
+    {% else %}
+      playing
+    {% endif %}
+  tracked_entity_id:
+    - sensor.sonoff_1001e012bb_power
+
+favorite_albums:
+  initial_value: []
+
+favorite_playlists:
+  initial_value: []
+
+favorite_tracks:
+  initial_value: []

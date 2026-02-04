@@ -1,20 +1,49 @@
 '1655381206162':
+  fields:
+    transition:
+      description: How long this should take to turn on
+      example: '5'
+      default: 5
   sequence:
-  - service: scene.turn_on
-    target:
-      entity_id: scene.welcome_home
+  - target:
+      entity_id: scene.snap_light_downstairs_lights_welcome_home
     metadata: {}
-  - type: turn_on
-    device_id: 88cc3a491d72955d7a52219c0329d35c
-    entity_id: light.kitchen_lights
-    domain: light
-    brightness_pct: 100
-  - type: turn_on
-    device_id: ed97c29bebf0b2b618b8e8ed85a42563
-    entity_id: light.living_room_lamp
-    domain: light
+    data_template:
+      transition: '{{transition | default(5)}}'
+    action: scene.turn_on
+  - data_template:
+      transition: '{{transition | default(5)}}'
+    target:
+      entity_id: light.kitchen_lights
+    action: light.turn_on
+  - data_template:
+      transition: '{{transition | default(5)}}'
+    target:
+      entity_id: light.living_room_lamp
+    enabled: false
+    action: light.turn_on
+  - data_template:
+      transition: '{{transition | default(5)}}'
+    target:
+      entity_id: light.dining_room_overhead
+    action: light.turn_on
+  - delay: '{{ (transition  | default(5)) + 5}}'
+  - action: scene_presets.start_dynamic_scene
+    data:
+      preset_id: 1f0ef091-949a-4efe-a7ed-c396cea3423a
+      targets:
+        device_id:
+        - 7685dbcb98335b545779107d745218ed
+        - 7d926de8d03469fba50fe2ea202a5306
+        - 57bbf074407cfca0302458ff8c673766
+        - 5775955bf5b12c7c2e7fc49b7b3fafba
+        - 9624eb8141e76a2f42b97eba10bf59f1
+      brightness: 217
+      transition: 45
+      interval: 60
   mode: single
   alias: Welcome Me Home
+  description: ''
 have_alexa_say:
   alias: Have Alexa Say
   variables:
@@ -43,10 +72,9 @@ area_scene_snapshot:
       description: description to save with
       example: at evening when curtains close
   variables:
-    entities: "{%- set scene_entities = [] -%}\n{%- if group is not defined or group\
-      \ is none -%}\n  {{ area_entities(area) | select('match','^light\\.') | list\
-      \ }}\n{%- else -%}\n  {{ state_attr(group, 'entity_id') | list }}\n{%- endif\
-      \ -%}\n"
+    entities: "{%- set scene_entities = [] -%}\n{%- if group is not defined or group
+      is none -%}\n  {{ area_entities(area) | select('match','^light\\.') | list }}\n{%-
+      else -%}\n  {{ state_attr(group, 'entity_id') | list }}\n{%- endif -%}\n"
     mytime: '{{ states(''sensor.date_time_iso'') | regex_replace(find=''[^\\dT]'',
       replace='''') | replace(''T'',''_'') }}'
     desc: '{{  iif(description is not defined or description is none,states(''input_text.scene_snapshot_desc''),description)
@@ -68,40 +96,39 @@ area_scene_snapshot:
     default:
     - service: notify.scene_notify_snapshot
       data_template:
-        message: "- id: {{ snap }}\n  name: {{ snap }}\n  # description: {{ desc }}\
-          \ \n  # saved: {{ states('sensor.time_date') }} ({{ states('sensor.time_of_day')\
-          \ }})\n  # illuminance:\n  {% for item in states.sensor | selectattr('attributes.device_class',\
-          \ 'eq', 'illuminance') | list -%}\n  #   {{ item.entity_id }}: {{ states(item.entity_id)\
-          \ }}\n  {% endfor -%}\n  # covers:\n  {% for item in states.cover -%}\n\
-          \  #   {{ item.entity_id }}: {{ state_attr(item.entity_id,'current_position')\
-          \ }}  # {{ states(item.entity_id) }} \n  {% endfor -%}\n  # condition: \n\
-          \  #   sun: \"{{ states('sun.sun') }}\"\n  #   elevation: {{ state_attr('sun.sun',\
-          \ 'elevation') }} degrees\n  #   rain: {{ states('sensor.my_rainmeter_rain')\
-          \ }} mm\n  #   weather: \"{{ states('sensor.buienradar_condition') }}\"\n\
-          \  entities: \n    {%- set scene_entities = [] -%}\n    {%- for l in entities\
-          \ %}\n    {{ l }}:\n      state: \"{{ states(l) }}\"\n      {%- if not is_state(l,'off')\
-          \ -%}\n        {%- for attr in states[l].attributes -%}\n          {%- if\
-          \ not attr in ['friendly_name', 'effect_list', 'update', 'update_available',\
-          \ 'linkquality', 'supported_features', 'icon', 'min_mireds', 'max_mireds',\
-          \ 'supported_color_modes'] %}\n      {{ attr }}: {{ \" \" }} \n        \
-          \    {%- if states[l].attributes[attr] is string or states[l].attributes[attr]\
-          \ is number -%}\n              {{ states[l].attributes[attr] }}  \n    \
-          \        {%- elif states[l].attributes[attr] is mapping -%}\n          \
-          \    {%- for value in states[l].attributes[attr] %}\n        {{ value }}:\
-          \ {{ states[l].attributes[attr][value] }}\n              {%- endfor -%}\
-          \  \n            {%- elif states[l].attributes[attr] is iterable -%}\n \
-          \             {%- for value in states[l].attributes[attr] %}\n        -\
-          \ {{ value }}\n              {%- endfor -%}  \n            {% endif %} \
-          \                   \n          {%- endif %}\n        {%- endfor %}\n  \
-          \    {%- endif %}\n    {%- endfor %}\n"
+        message: "- id: {{ snap }}\n  name: {{ snap }}\n  # description: {{ desc }}
+          \n  # saved: {{ states('sensor.time_date') }} ({{ states('sensor.time_of_day')
+          }})\n  # illuminance:\n  {% for item in states.sensor | selectattr('attributes.device_class',
+          'eq', 'illuminance') | list -%}\n  #   {{ item.entity_id }}: {{ states(item.entity_id)
+          }}\n  {% endfor -%}\n  # covers:\n  {% for item in states.cover -%}\n  #
+          \  {{ item.entity_id }}: {{ state_attr(item.entity_id,'current_position')
+          }}  # {{ states(item.entity_id) }} \n  {% endfor -%}\n  # condition: \n
+          \ #   sun: \"{{ states('sun.sun') }}\"\n  #   elevation: {{ state_attr('sun.sun',
+          'elevation') }} degrees\n  #   rain: {{ states('sensor.my_rainmeter_rain')
+          }} mm\n  #   weather: \"{{ states('sensor.buienradar_condition') }}\"\n
+          \ entities: \n    {%- set scene_entities = [] -%}\n    {%- for l in entities
+          %}\n    {{ l }}:\n      state: \"{{ states(l) }}\"\n      {%- if not is_state(l,'off')
+          -%}\n        {%- for attr in states[l].attributes -%}\n          {%- if
+          not attr in ['friendly_name', 'effect_list', 'update', 'update_available',
+          'linkquality', 'supported_features', 'icon', 'min_mireds', 'max_mireds',
+          'supported_color_modes'] %}\n      {{ attr }}: {{ \" \" }} \n            {%-
+          if states[l].attributes[attr] is string or states[l].attributes[attr] is
+          number -%}\n              {{ states[l].attributes[attr] }}  \n            {%-
+          elif states[l].attributes[attr] is mapping -%}\n              {%- for value
+          in states[l].attributes[attr] %}\n        {{ value }}: {{ states[l].attributes[attr][value]
+          }}\n              {%- endfor -%}  \n            {%- elif states[l].attributes[attr]
+          is iterable -%}\n              {%- for value in states[l].attributes[attr]
+          %}\n        - {{ value }}\n              {%- endfor -%}  \n            {%
+          endif %}                    \n          {%- endif %}\n        {%- endfor
+          %}\n      {%- endif %}\n    {%- endfor %}\n"
     - service: scene.reload
     - service: script.debug
       data_template:
         source: script.area_scene_snapshot
         title: Group or area saved
-        message: "{% if group is defined and group is not none %}\n  Group {{ group\
-          \ }} saved to {{ snap }}\n{% else %}\n  Area {{ area }} saved to {{ snap\
-          \ }}\n{% endif %}\n"
+        message: "{% if group is defined and group is not none %}\n  Group {{ group
+          }} saved to {{ snap }}\n{% else %}\n  Area {{ area }} saved to {{ snap }}\n{%
+          endif %}\n"
 area_snapshot_for_area:
   alias: area_snapshot_for_area
   sequence:
@@ -245,3 +272,213 @@ living_room_toggle_hdmi_switch:
     target:
       entity_id: remote.living_room_remote_remote
   mode: single
+living_room_switch_to_bluetooth:
+  alias: Living Room - Switch To Bluetooth
+  sequence:
+  - service: remote.send_command
+    data:
+      device: soundbar
+      command: bluetooth
+    target:
+      entity_id: remote.living_room_remote_remote
+  mode: single
+show_image_on_devices:
+  alias: Show Image on Devices
+  sequence:
+  - data:
+      data:
+        position: bottom-right
+        duration: 10
+        image:
+          url: '{{image}}'
+      message: '{{thing_to_say}}'
+    enabled: true
+    action: notify.android_tv_fire_tv
+  - data:
+      media:
+        media_content_id: '{{image}}'
+        media_content_type: image
+        metadata: {}
+    target:
+      entity_id:
+      - media_player.matthew_s_2nd_echo_show
+    enabled: true
+    action: media_player.play_media
+  - data:
+      data:
+        duration: 10
+        image: '{{image}}'
+      message: '{{thing_to_say}}'
+    action: notify.hass_agent_office
+  - action: notify.html5
+    data:
+      message: '{{thing_to_say}}'
+      data:
+        image: '{{image}}'
+        url: '{{image}}'
+  variables:
+    thing_to_say: default
+    image: default
+  mode: single
+  description: ''
+turn_on_frozen:
+  alias: Turn On Frozen
+  sequence:
+  - service: climate.set_hvac_mode
+    data:
+      hvac_mode: fan_only
+    target:
+      entity_id: climate.d828c91dc9cd_climate
+  - service: script.have_alexa_say
+    data:
+      thing_to_say: AC is Frozen, turning on fan mode
+  - delay:
+      hours: 0
+      minutes: 1
+      seconds: 0
+      milliseconds: 0
+  - service: input_boolean.turn_on
+    data: {}
+    target:
+      entity_id: input_boolean.office_ac_frozen
+  mode: single
+turn_off_frozen:
+  alias: Turn Off Frozen
+  sequence:
+  - service: input_boolean.turn_off
+    data: {}
+    target:
+      entity_id: input_boolean.office_ac_frozen
+  - service: climate.set_hvac_mode
+    data:
+      hvac_mode: cool
+    target:
+      entity_id: climate.d828c91dc9cd_climate
+  mode: single
+toggle_frozen:
+  alias: Toggle Frozen
+  sequence:
+  - if:
+    - condition: state
+      entity_id: input_boolean.office_ac_frozen
+      state: 'on'
+    then:
+    - service: script.turn_off_frozen
+      data: {}
+    else:
+    - service: script.turn_on_frozen
+      data: {}
+  mode: single
+mute_smoke_detector:
+  alias: Mute Smoke Detector
+  sequence:
+  - action: switch.toggle
+    target:
+      entity_id: switch.kitchen_smoke_detector_heartbeat_indicator
+    data: {}
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 5
+      milliseconds: 0
+  - data:
+      option: mute
+    target:
+      entity_id: select.kitchen_smoke_detector_buzzer
+    action: select.select_option
+  mode: single
+  icon: mdi:smoke-detector
+living_room_toggle_hifi:
+  alias: Living Room - Toggle HiFi
+  sequence:
+  - service: remote.send_command
+    data:
+      device: hifi
+      command: power
+      hold_secs: 1.7
+    target:
+      entity_id: remote.living_room_remote_remote
+  mode: single
+living_room_switch_to_echo_link:
+  alias: Living Room - Switch to Echo Link
+  sequence:
+  - service: remote.send_command
+    data:
+      device: hifi
+      command: echo link
+      hold_secs: 2.7
+    target:
+      entity_id: remote.living_room_remote_remote
+  mode: single
+run_ozone_for_a_day:
+  sequence:
+  - type: turn_on
+    device_id: b5cb3bfcc8b397fee618f14ad112d907
+    entity_id: b4b9becfe639551c6a619945df0cf4ec
+    domain: switch
+  - delay:
+      hours: 24
+      minutes: 0
+      seconds: 0
+  - type: turn_off
+    device_id: b5cb3bfcc8b397fee618f14ad112d907
+    entity_id: b4b9becfe639551c6a619945df0cf4ec
+    domain: switch
+  alias: Run Ozone for a Day
+  description: ''
+alarm_sound:
+  sequence:
+  - if:
+    - condition: not
+      conditions:
+      - condition: state
+        entity_id: media_player.spotify_matthew_madonna
+        state: unavailable
+    then:
+    - wait_for_trigger:
+      - trigger: state
+        entity_id:
+        - media_player.spotify_matthew_madonna
+        from: unavailable
+        to:
+      timeout:
+        hours: 0
+        minutes: 10
+        seconds: 0
+        milliseconds: 0
+  - action: media_player.select_source
+    data:
+      source: Matthew's 2nd Echo Show
+    target:
+      device_id: 03da9a068eb4ac915a6ee3b89f259622
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 2
+      milliseconds: 0
+  - action: media_player.volume_set
+    metadata: {}
+    data:
+      volume_level: 1
+    target:
+      device_id: 03da9a068eb4ac915a6ee3b89f259622
+  - action: media_player.play_media
+    metadata: {}
+    data:
+      media:
+        media_content_id: spotify:track:67euHrPxIzKpzpSRLeIKhU
+        media_content_type: spotify://track
+        metadata:
+          title: Alarm
+          thumbnail: https://i.scdn.co/image/ab67616d0000b2736611e7da31f9abd3587dfafe
+          media_class: track
+          children_media_class:
+          navigateIds:
+          - {}
+          - media_content_type: spotify://current_user_recently_played
+            media_content_id: current_user_recently_played
+          browse_entity_id: media_player.spotify_matthew_madonna
+    target:
+      device_id: 03da9a068eb4ac915a6ee3b89f259622
+  alias: Alarm Sound
+  description: ''
