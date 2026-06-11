@@ -482,3 +482,119 @@ alarm_sound:
       device_id: 03da9a068eb4ac915a6ee3b89f259622
   alias: Alarm Sound
   description: ''
+'1771963920290':
+  alias: Save Bed Preset (MQTT)
+  description: Appends current bed position to the MQTT-stored JSON list
+  icon: mdi:content-save
+  sequence:
+  - condition: template
+    value_template: '{{ states(''input_text.bed_preset_name'') | length > 0 }}'
+  - action: mqtt.publish
+    data:
+      topic: homeassistant/bedroom/bed_presets
+      retain: true
+      payload: "{# Get existing presets from the MQTT sensor attribute, default to
+        empty list #} {% set current = state_attr('sensor.bed_presets', 'presets')
+        | default([], true) %}\n{# Create the new preset object #} {% set new_preset
+        = {\n  'name': states('input_text.bed_preset_name'),\n  'head': states('sensor.bedframe_head_position_percentage')
+        | replace('%', '') | float(0),\n  'legs': states('sensor.bedframe_legs_position_percentage')
+        | replace('%', '') | float(0)\n} %}\n{# Combine and output as JSON #} {{ {'presets':
+        current + [new_preset]} | tojson }}"
+  - action: input_text.set_value
+    target:
+      entity_id: input_text.bed_preset_name
+    data:
+      value: ''
+  - action: system_log.write
+    data:
+      message: Bed position '{{ states('input_text.bed_preset_name') }}' saved to
+        MQTT
+      level: info
+load_bed_preset:
+  alias: Load Bed Preset
+  description: Load a saved bed position preset from MQTT
+  icon: mdi:upload
+  fields:
+    preset_name:
+      name: Preset Name
+      description: The name of the preset to load
+      required: true
+      selector:
+        text:
+  sequence:
+  - variables:
+      all_presets: '{{ state_attr(''sensor.bed_presets'', ''presets'') | default([],
+        true) }}'
+      target_preset: '{{ all_presets | selectattr(''name'', ''eq'', preset_name) |
+        first | default(none) }}'
+  - if:
+    - condition: template
+      value_template: '{{ target_preset is not none }}'
+    then:
+    - action: number.set_value
+      target:
+        entity_id: number.bedframe_target_head_position
+      data:
+        value: '{{ target_preset.head }}'
+    - action: number.set_value
+      target:
+        entity_id: number.bedframe_target_legs_position
+      data:
+        value: '{{ target_preset.legs }}'
+    - action: system_log.write
+      data:
+        message: 'Preset ''{{ preset_name }}'' loaded - Head: {{ target_preset.head
+          }}%, Legs: {{ target_preset.legs }}%'
+        level: info
+    - delay:
+        milliseconds: 500
+    - action: button.press
+      target:
+        entity_id: button.bedframe_move_to_target_position
+    else:
+    - action: system_log.write
+      data:
+        message: Preset '{{ preset_name }}' not found in MQTT storage
+        level: warning
+pulse_lay_flat:
+  alias: Pulse Lay Flat
+  description: Pulse the Lay Flat switch - turn on for 1 second then off
+  icon: mdi:bed
+  sequence:
+  - target:
+      entity_id: switch.bedframe_bed_lay_flat
+    action: switch.turn_on
+  - delay: 0:00:01
+  - target:
+      entity_id: switch.bedframe_bed_lay_flat
+    action: switch.turn_off
+pulse_zero_g:
+  alias: Pulse Zero G
+  description: Pulse the Zero G switch - turn on for 1 second then off
+  icon: mdi:rocket
+  sequence:
+  - target:
+      entity_id: switch.bedframe_bed_zero_g
+    action: switch.turn_on
+  - delay: 0:00:01
+  - target:
+      entity_id: switch.bedframe_bed_zero_g
+    action: switch.turn_off
+delete_bed_preset:
+  alias: Delete Bed Preset
+  icon: mdi:delete
+  fields:
+    preset_name:
+      name: Preset Name
+      required: true
+      selector:
+        text:
+  sequence:
+  - action: mqtt.publish
+    data:
+      topic: homeassistant/bedroom/bed_presets
+      retain: true
+      payload: '{% set current = state_attr(''sensor.bed_presets'', ''presets'') |
+        default([], true) %} {% set filtered = current | rejectattr(''name'', ''eq'',
+        preset_name) | list %} {{ {''presets'': filtered} | to_json }}'
+  description: ''

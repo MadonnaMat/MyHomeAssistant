@@ -1,6 +1,69 @@
+# --- Modern Sensors (State-Based) ---
+- sensor:
+    - name: "Washer Time Display"
+      unique_id: washer_time_display_legacy
+      # This ensures the entity ID remains sensor.washer_time_display
+      default_entity_id: sensor.washer_time_display
+      state: >
+        {% if is_state('sensor.front_load_washer_run_state', '-') %}
+          unknown
+        {% elif is_state('sensor.front_load_washer_run_state', 'Standby') %}
+          -:--
+        {% else %}
+          {{ state_attr('sensor.front_load_washer', 'remain_time') }}
+        {% endif %}
+
+    - name: "Dryer Time Display"
+      unique_id: dryer_time_display_legacy
+      default_entity_id: sensor.dryer_time_display
+      state: >
+        {% if is_state('sensor.dryer_run_state', '-') %}
+          unknown
+        {% elif is_state('sensor.dryer_run_state', 'Standby') %}
+          -:--
+        {% else %}
+          {{ state_attr('sensor.dryer', 'remain_time') }}
+        {% endif %}
+
+    - name: "Dish Washer Time Display"
+      unique_id: dishwasher_time_display_legacy
+      default_entity_id: sensor.dishwasher_time_display
+      state: >
+        {% if is_state('input_boolean.dishwasher_on', 'off') %}
+          off
+        {% else %}
+          {% set f = state_attr('timer.dishwasher_timer', 'finishes_at') %}
+          {{ '00:00' if f == None else
+          (as_datetime(f) - now()).total_seconds() | timestamp_custom('%H:%M', false) }}
+        {% endif %}
+
+    - name: "Blank Sensor"
+      unique_id: blank_sensor_legacy
+      default_entity_id: sensor.blank
+      state: ""
+- switch:
+    - name: "Office AC"
+      unique_id: office_ac_switch_modern
+      state: "{{ not is_state('climate.gemodulec9cd_window_ac', 'off') }}"
+      turn_on:
+        - action: climate.set_hvac_mode
+          data: { hvac_mode: cool }
+          target: { entity_id: climate.gemodulec9cd_window_ac }
+      turn_off:
+        - action: climate.set_hvac_mode
+          data: { hvac_mode: "off" }
+          target: { entity_id: climate.gemodulec9cd_window_ac }
+# --- Modern Binary Sensors (State-Based) ---
 - binary_sensor:
+    - name: "Washer Door Lock"
+      unique_id: washer_door_lock_legacy
+      default_entity_id: binary_sensor.washer_door_lock
+      device_class: lock
+      state: "{{ state_attr('sensor.front_load_washer','door_lock') }}"
+
     - name: "Alexa HA - Fireplace Lamp"
-      unique_id: alexa_ha_fireplace_lamp
+      unique_id: alexa_ha_fireplace_lamp_legacy
+      default_entity_id: binary_sensor.alexa_ha_fireplace
       device_class: garage_door
       state: "{{ is_state('input_boolean.home_assistant_fireplace', 'on') }}"
 # SpotifyPlus Search Media Template Sensor

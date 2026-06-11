@@ -19,11 +19,8 @@ frontend:
   themes: !include_dir_merge_named themes
   extra_module_url:
     - /local/community/custom-brand-icons/custom-brand-icons.js
-switch: !include switches.yaml
 climate: !include climates.yaml
 lock: !include locks.yaml
-sensor: !include sensors.yaml
-binary_sensor: !include binary_sensors.yaml
 var: !include var.yaml
 template: !include templates.yaml
 cloud:
@@ -54,12 +51,15 @@ notify:
   - name: "hass agent office"
     platform: hass_agent_notifier
     resource: http://192.168.86.50:5115/notify
-browser_mod:
-  "3da81a2a-6ac98a3c":
-    name: "Desktop"
 command_line:
   - sensor:
       unique_id: wan_address
       name: WAN Address
       command: "wget -O - -q https://checkip.amazonaws.com"
       scan_interval: 30
+mqtt:
+  sensor:
+    - name: "Bed Presets"
+      state_topic: "homeassistant/bedroom/bed_presets"
+      value_template: "{{value_json | length}} Presets"
+      json_attributes_topic: "homeassistant/bedroom/bed_presets"

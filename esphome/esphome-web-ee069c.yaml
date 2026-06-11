@@ -1,0 +1,563 @@
+esphome:
+  name: esphome-web-ee069c
+  friendly_name: Bedframe
+  min_version: 2025.11.0
+  name_add_mac_suffix: false
+  compile_process_limit: 1
+  on_boot:
+    priority: 600
+    then:
+      - logger.log: "Loading calibration values from persistent storage"
+      - delay: 1s
+      - number.set:
+          id: target_head_position
+          value: !lambda 'return id(head_position_percent).state;'
+      - number.set:
+          id: target_legs_position
+          value: !lambda 'return id(legs_position_percent).state;'
+
+globals:
+  - id: minimum_head_pitch
+    type: float
+    initial_value: '0'
+    restore_value: yes
+  - id: minimum_legs_pitch
+    type: float
+    initial_value: '0'
+    restore_value: yes
+  - id: maximum_head_pitch
+    type: float
+    initial_value: '0'
+    restore_value: yes
+  - id: maximum_legs_pitch
+    type: float
+    initial_value: '0'
+    restore_value: yes
+
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+# Allow Over-The-Air updates
+ota:
+- platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+i2c:
+  - id: 'bus_a'
+    sda: GPIO21
+    scl: GPIO22
+    scan: true
+    frequency: 100kHz
+    timeout: 13ms
+
+script:
+  - id: bed_timer_script
+    mode: restart
+    then:
+      - logger.log: "Timer Started: Bed motor will auto-cut in 60s."
+      - delay: 60s
+      - logger.log: "Timer Expired: Shutting down all bed switches."
+      # This block ensures that whatever switch is currently on gets turned off
+      - switch.turn_off: sw_legs_down
+      - switch.turn_off: sw_sync
+      - switch.turn_off: sw_legs_up
+      - switch.turn_off: sw_lay_flat
+      - switch.turn_off: sw_zero_g
+      - switch.turn_off: sw_head_up
+      - switch.turn_off: sw_head_down
+
+  - id: move_head_to_target
+    mode: single
+    then:
+      - logger.log:
+          format: "Moving head from %.1f%% to %.1f%%"
+          args: ["id(head_position_percent).state", "id(target_head_position).state"]
+      
+      - if:
+          condition:
+            lambda: 'return id(head_position_percent).state < id(target_head_position).state;'
+          then:
+            - logger.log: "Head needs to move up"
+            - switch.turn_on: sw_head_up
+            - wait_until:
+                condition:
+                  lambda: 'return id(head_position_percent).state >= (id(target_head_position).state - 3);'
+            - switch.turn_off: sw_head_up
+            - logger.log: "Head reached target"
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(head_position_percent).state > id(target_head_position).state;'
+                then:
+                  - logger.log: "Head needs to move down"
+                  - switch.turn_on: sw_head_down
+                  - wait_until:
+                      condition:
+                        lambda: 'return id(head_position_percent).state <= (id(target_head_position).state + 3);'
+                  - switch.turn_off: sw_head_down
+                  - logger.log: "Head reached target"
+                else:
+                  - logger.log: "Head already at target"
+
+  - id: move_legs_to_target
+    mode: single
+    then:
+      - logger.log:
+          format: "Moving legs from %.1f%% to %.1f%%"
+          args: ["id(legs_position_percent).state", "id(target_legs_position).state"]
+      
+      - if:
+          condition:
+            lambda: 'return id(legs_position_percent).state < id(target_legs_position).state;'
+          then:
+            - logger.log: "Legs need to move up"
+            - switch.turn_on: sw_legs_up
+            - wait_until:
+                condition:
+                  lambda: 'return id(legs_position_percent).state >= (id(target_legs_position).state - 3);'
+            - switch.turn_off: sw_legs_up
+            - logger.log: "Legs reached target"
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(legs_position_percent).state > id(target_legs_position).state;'
+                then:
+                  - logger.log: "Legs need to move down"
+                  - switch.turn_on: sw_legs_down
+                  - wait_until:
+                      condition:
+                        lambda: 'return id(legs_position_percent).state <= (id(target_legs_position).state + 3);'
+                  - switch.turn_off: sw_legs_down
+                  - logger.log: "Legs reached target"
+                else:
+                  - logger.log: "Legs already at target"
+
+  - id: move_to_target_script
+    mode: single
+    then:
+      - logger.log: "Starting move to target sequence"
+      
+      # Head movement
+      - logger.log:
+          format: "Moving head from %.1f%% to %.1f%%"
+          args: ["id(head_position_percent).state", "id(target_head_position).state"]
+      
+      - if:
+          condition:
+            lambda: 'return id(head_position_percent).state < id(target_head_position).state;'
+          then:
+            - logger.log: "Head needs to move up"
+            - switch.turn_on: sw_head_up
+            - wait_until:
+                condition:
+                  lambda: 'return id(head_position_percent).state >= (id(target_head_position).state - 3);'
+            - switch.turn_off: sw_head_up
+            - logger.log: "Head reached target"
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(head_position_percent).state > id(target_head_position).state;'
+                then:
+                  - logger.log: "Head needs to move down"
+                  - switch.turn_on: sw_head_down
+                  - wait_until:
+                      condition:
+                        lambda: 'return id(head_position_percent).state <= (id(target_head_position).state + 3);'
+                  - switch.turn_off: sw_head_down
+                  - logger.log: "Head reached target"
+                else:
+                  - logger.log: "Head already at target"
+      
+      - delay: 2s
+      
+      # Legs movement
+      - logger.log:
+          format: "Moving legs from %.1f%% to %.1f%%"
+          args: ["id(legs_position_percent).state", "id(target_legs_position).state"]
+      
+      - if:
+          condition:
+            lambda: 'return id(legs_position_percent).state < id(target_legs_position).state;'
+          then:
+            - logger.log: "Legs need to move up"
+            - switch.turn_on: sw_legs_up
+            - wait_until:
+                condition:
+                  lambda: 'return id(legs_position_percent).state >= (id(target_legs_position).state - 3);'
+            - switch.turn_off: sw_legs_up
+            - logger.log: "Legs reached target"
+          else:
+            - if:
+                condition:
+                  lambda: 'return id(legs_position_percent).state > id(target_legs_position).state;'
+                then:
+                  - logger.log: "Legs need to move down"
+                  - switch.turn_on: sw_legs_down
+                  - wait_until:
+                      condition:
+                        lambda: 'return id(legs_position_percent).state <= (id(target_legs_position).state + 3);'
+                  - switch.turn_off: sw_legs_down
+                  - logger.log: "Legs reached target"
+                else:
+                  - logger.log: "Legs already at target"
+      
+      - logger.log: "Move to target sequence complete!"
+
+switch:
+  - platform: gpio
+    pin: GPIO18
+    name: "Bed Legs Down"
+    id: sw_legs_down
+    restore_mode: ALWAYS_OFF
+    interlock: &bed_interlock [sw_sync, sw_legs_up, sw_lay_flat, sw_zero_g, sw_head_up, sw_head_down]
+    interlock_wait_time: 300ms
+    on_turn_on:
+      - script.execute: bed_timer_script
+    on_turn_off: 
+      - script.stop: bed_timer_script
+  - platform: gpio
+    pin: GPIO13
+    name: "Bed Sync"
+    id: sw_sync
+    restore_mode: ALWAYS_OFF
+    interlock: [sw_legs_down, sw_legs_up, sw_lay_flat, sw_zero_g, sw_head_up, sw_head_down]
+    interlock_wait_time: 300ms
+    on_turn_on:
+      - script.execute: bed_timer_script
+    on_turn_off: 
+      - script.stop: bed_timer_script
+
+  - platform: gpio
+    pin: GPIO14
+    name: "Bed Legs Up"
+    id: sw_legs_up
+    restore_mode: ALWAYS_OFF
+    interlock: [sw_legs_down, sw_sync, sw_lay_flat, sw_zero_g, sw_head_up, sw_head_down]
+    interlock_wait_time: 300ms
+    on_turn_on:
+      - script.execute: bed_timer_script
+    on_turn_off: 
+      - script.stop: bed_timer_script
+
+  - platform: gpio
+    pin: GPIO27
+    name: "Bed Lay Flat"
+    id: sw_lay_flat
+    restore_mode: ALWAYS_OFF
+    interlock: [sw_legs_down, sw_sync, sw_legs_up, sw_zero_g, sw_head_up, sw_head_down]
+    interlock_wait_time: 300ms
+    on_turn_on:
+      - script.execute: bed_timer_script
+    on_turn_off: 
+      - script.stop: bed_timer_script
+
+  - platform: gpio
+    pin: GPIO26
+    name: "Bed Zero G"
+    id: sw_zero_g
+    restore_mode: ALWAYS_OFF
+    interlock: [sw_legs_down, sw_sync, sw_legs_up, sw_lay_flat, sw_head_up, sw_head_down]
+    interlock_wait_time: 300ms
+    on_turn_on:
+      - script.execute: bed_timer_script
+    on_turn_off: 
+      - script.stop: bed_timer_script
+
+  - platform: gpio
+    pin: GPIO25
+    name: "Bed Head Up"
+    id: sw_head_up
+    restore_mode: ALWAYS_OFF
+    interlock: [sw_legs_down, sw_sync, sw_legs_up, sw_lay_flat, sw_zero_g, sw_head_down]
+    interlock_wait_time: 300ms
+    on_turn_on:
+      - script.execute: bed_timer_script
+    on_turn_off: 
+      - script.stop: bed_timer_script
+
+  - platform: gpio
+    pin: GPIO33
+    name: "Bed Head Down"
+    id: sw_head_down
+    restore_mode: ALWAYS_OFF
+    interlock: [sw_legs_down, sw_sync, sw_legs_up, sw_lay_flat, sw_zero_g, sw_head_up]
+    interlock_wait_time: 300ms
+    on_turn_on:
+      - script.execute: bed_timer_script
+    on_turn_off: 
+      - script.stop: bed_timer_script
+    
+sensor:
+  - platform: mpu6050
+    i2c_id: bus_a
+    address: 0x68
+    accel_x:
+      name: "MPU6050 #1 Accel X"
+      internal: true
+      id: accel_x_1
+      filters: 
+        - exponential_moving_average:
+            alpha: 0.5
+            send_every: 1
+        - delta: 0.2
+    accel_y:
+      name: "MPU6050 #1 Accel Y"
+      internal: true
+      id: accel_y_1
+      filters: 
+        - exponential_moving_average:
+            alpha: 0.5
+            send_every: 1
+        - delta: 0.2
+    accel_z:
+      name: "MPU6050 #1 Accel z"
+      internal: true
+      id: accel_z_1
+      filters: 
+        - exponential_moving_average:
+            alpha: 0.5
+            send_every: 1
+        - delta: 0.2   
+    gyro_x:
+      name: "MPU6050 #1 Gyro X"
+      internal: true
+    gyro_y:
+      name: "MPU6050 #1 Gyro Y"
+      internal: true
+    gyro_z:
+      name: "MPU6050 #1 Gyro z"
+      internal: true
+    temperature:
+      name: "MPU6050 #1 Temperature"
+      internal: true
+    update_interval: 100ms
+  - platform: mpu6050
+    i2c_id: bus_a
+    address: 0x69
+    accel_x:
+      name: "MPU6050 #2 Accel X"
+      internal: true
+      id: accel_x_2
+      filters: 
+        - exponential_moving_average:
+            alpha: 0.5
+            send_every: 1
+        - delta: 0.2
+    accel_y:
+      name: "MPU6050 #2 Accel Y"
+      internal: true
+      id: accel_y_2
+      filters: 
+        - exponential_moving_average:
+            alpha: 0.5
+            send_every: 1
+        - delta: 0.2
+    accel_z:
+      name: "MPU6050 #2 Accel z"
+      internal: true
+      id: accel_z_2
+      filters: 
+        - exponential_moving_average:
+            alpha: 0.5
+            send_every: 1
+        - delta: 0.2   
+    gyro_x:
+      name: "MPU6050 #2 Gyro X"
+      internal: true
+    gyro_y:
+      name: "MPU6050 #2 Gyro Y"
+      internal: true
+    gyro_z:
+      name: "MPU6050 #2 Gyro z"
+      internal: true
+    temperature:
+      name: "MPU6050 #2 Temperature"
+      internal: true
+    update_interval: 100ms
+
+  - platform: template
+    name: "Tilt Roll #1"
+    internal: true
+    unit_of_measurement: "°"
+    accuracy_decimals: 1
+    update_interval: 100ms
+    lambda: |-
+      const float PI = 3.14159265359f;
+      return (atan2(id(accel_y_1).state, id(accel_z_1).state) * 180.0f / PI);
+
+  - platform: template
+    name: "Tilt Pitch Head"
+    id: tilt_pitch_head
+    unit_of_measurement: "°"
+    accuracy_decimals: 1
+    update_interval: 100ms
+    lambda: |-
+      const float PI = 3.14159265359f;
+      float x = id(accel_x_1).state;
+      float y = id(accel_y_1).state;
+      float z = id(accel_z_1).state;
+      return (atan2(-x, sqrt(y*y + z*z)) * 180.0f / PI);
+
+  - platform: template
+    name: "Tilt Roll #2"
+    internal: true
+    unit_of_measurement: "°"
+    accuracy_decimals: 1
+    update_interval: 100ms
+    lambda: |-
+      const float PI = 3.14159265359f;
+      return (atan2(id(accel_y_2).state, id(accel_z_2).state) * 180.0f / PI);
+
+  - platform: template
+    name: "Tilt Pitch Legs"
+    id: tilt_pitch_legs
+    unit_of_measurement: "°"
+    accuracy_decimals: 1
+    update_interval: 100ms
+    lambda: |-
+      const float PI = 3.14159265359f;
+      float x = id(accel_x_2).state;
+      float y = id(accel_y_2).state;
+      float z = id(accel_z_2).state;
+      return (atan2(-x, sqrt(y*y + z*z)) * 180.0f / PI);
+
+  - platform: template
+    name: "Minimum Head Pitch (Calibration)"
+    unit_of_measurement: "°"
+    accuracy_decimals: 2
+    update_interval: 1s
+    lambda: |-
+      return id(minimum_head_pitch);
+
+  - platform: template
+    name: "Minimum Legs Pitch (Calibration)"
+    unit_of_measurement: "°"
+    accuracy_decimals: 2
+    update_interval: 1s
+    lambda: |-
+      return id(minimum_legs_pitch);
+
+  - platform: template
+    name: "Maximum Head Pitch (Calibration)"
+    unit_of_measurement: "°"
+    accuracy_decimals: 2
+    update_interval: 1s
+    lambda: |-
+      return id(maximum_head_pitch);
+
+  - platform: template
+    name: "Maximum Legs Pitch (Calibration)"
+    unit_of_measurement: "°"
+    accuracy_decimals: 2
+    update_interval: 1s
+    lambda: |-
+      return id(maximum_legs_pitch);
+
+  - platform: template
+    name: "Head Position Percentage"
+    id: head_position_percent
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    update_interval: 100ms
+    lambda: |-
+      float current = id(tilt_pitch_head).state;
+      float min_pitch = id(minimum_head_pitch);
+      float max_pitch = id(maximum_head_pitch);
+      float range = max_pitch - min_pitch;
+      if (range == 0) return 0;
+      return ((current - min_pitch) / range) * 100.0f;
+
+  - platform: template
+    name: "Legs Position Percentage"
+    id: legs_position_percent
+    unit_of_measurement: "%"
+    accuracy_decimals: 1
+    update_interval: 100ms
+    lambda: |-
+      float current = id(tilt_pitch_legs).state;
+      float min_pitch = id(minimum_legs_pitch);
+      float max_pitch = id(maximum_legs_pitch);
+      float range = max_pitch - min_pitch;
+      if (range == 0) return 0;
+      return ((current - min_pitch) / range) * 100.0f;
+
+number:
+  - platform: template
+    name: "Target Head Position"
+    id: target_head_position
+    min_value: 0
+    max_value: 100
+    step: 1
+    unit_of_measurement: "%"
+    optimistic: true
+
+  - platform: template
+    name: "Target Legs Position"
+    id: target_legs_position
+    min_value: 0
+    max_value: 100
+    step: 1
+    unit_of_measurement: "%"
+    optimistic: true
+
+button:
+  - platform: template
+    name: "Set Minimum Head Pitch"
+    id: set_min_head_pitch_button
+    on_press:
+      - globals.set:
+          id: minimum_head_pitch
+          value: !lambda 'return id(tilt_pitch_head).state;'
+      - logger.log:
+          format: "Minimum head pitch set to: %.2f°"
+          args: ["id(minimum_head_pitch)"]
+
+  - platform: template
+    name: "Set Maximum Head Pitch"
+    id: set_max_head_pitch_button
+    on_press:
+      - globals.set:
+          id: maximum_head_pitch
+          value: !lambda 'return id(tilt_pitch_head).state;'
+      - logger.log:
+          format: "Maximum head pitch set to: %.2f°"
+          args: ["id(maximum_head_pitch)"]
+
+  - platform: template
+    name: "Set Minimum Legs Pitch"
+    id: set_min_legs_pitch_button
+    on_press:
+      - globals.set:
+          id: minimum_legs_pitch
+          value: !lambda 'return id(tilt_pitch_legs).state;'
+      - logger.log:
+          format: "Minimum legs pitch set to: %.2f°"
+          args: ["id(minimum_legs_pitch)"]
+
+  - platform: template
+    name: "Set Maximum Legs Pitch"
+    id: set_max_legs_pitch_button
+    on_press:
+      - globals.set:
+          id: maximum_legs_pitch
+          value: !lambda 'return id(tilt_pitch_legs).state;'
+      - logger.log:
+          format: "Maximum legs pitch set to: %.2f°"
+          args: ["id(maximum_legs_pitch)"]
+
+  - platform: template
+    name: "Move to Target Position"
+    id: move_to_target_button
+    on_press:
+      - script.execute: move_to_target_script

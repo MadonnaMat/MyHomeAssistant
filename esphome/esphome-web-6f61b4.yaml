@@ -1,0 +1,323 @@
+esphome:
+  name: esphome-web-6f61b4
+  friendly_name: wireless-keypad
+  min_version: 2025.11.0
+  name_add_mac_suffix: false
+  includes:
+    - custom_hash.h
+
+  on_boot:
+    # --- EXISTING: Your standard boot sequence ---
+    - priority: -100
+      then:
+        - safe_mode.mark_successful
+        - delay: 500ms
+        - lambda: id(my_display).turn_on();
+        - delay: 50ms
+        - component.update: battery_voltage_raw
+        - component.update: battery_capacity
+        - component.update: my_display
+
+        - wait_until:
+            condition: api.connected
+            timeout: 15s
+        - delay: 2s
+        - if:
+            condition:
+              binary_sensor.is_off: door_switch
+            then:
+              - logger.log: "Wakeup complete: Door is closed. Battery reported, returning to deep sleep."
+              - lambda: |-
+                  id(my_display).fill(Color::BLACK);
+                  id(my_display).update();
+                  id(my_display).turn_off();
+              - delay: 100ms
+              - deep_sleep.enter: my_deep_sleep
+            else:
+              - logger.log: "Wakeup complete: Door is open. Staying awake until closed."
+
+esp32:
+  variant: esp32
+  framework:
+    type: arduino
+
+substitutions:
+  my_hash_salt: !secret keypad_salt
+
+globals:
+  - id: actual_pin
+    type: std::string
+    initial_value: '""'
+  - id: display_pin
+    type: std::string
+    initial_value: '""'
+  - id: lockout_state
+    type: int
+    initial_value: '0'
+    # 0 = Active, 1 = Pending HA Response, 2 = Failed (Locked), 3 = Success (Unlocked)
+
+
+font:
+  - file: "gfonts://Roboto"
+    id: font_large
+    size: 32
+
+output:
+  - platform: ledc
+    id: buzzer_pwm
+    pin: GPIO27
+
+rtttl:
+  - id: rtttl_player
+    output: buzzer_pwm
+
+i2c:
+  sda: GPIO21
+  scl: GPIO22
+  scan: true
+  frequency: 100kHz
+
+display:
+  - platform: ssd1306_i2c
+    model: "SH1106 128x64"
+    address: 0x3C
+    id: my_display
+    update_interval: never
+    lambda: |-
+      // --- 1. Draw Battery Icon (Top Left, ~30px high) ---
+      it.rectangle(0, 2, 14, 28); // Main body
+      it.filled_rectangle(4, 0, 6, 2); // Top nub
+
+      if (id(battery_capacity).has_state()) {
+        float pct = id(battery_capacity).state / 100.0;
+        int h = 24 * pct; // Max fill height is 24px
+        if (h > 0) {
+          // Fill from bottom up
+          it.filled_rectangle(2, 28 - h + 1, 10, h);
+        }
+      }
+
+      // --- 2. Draw State Machine (Input vs Padlocks vs Loading) ---
+      if (id(lockout_state) == 0) {
+         // Show PIN entry asterisks
+         it.printf(64, 30, id(font_large), TextAlign::TOP_CENTER, "%s", id(display_pin).c_str());
+      }
+      else if (id(lockout_state) == 1) {
+         // Loading State: Draw a primitive hourglass centered on the screen
+         it.line(52, 20, 76, 20);
+         it.line(52, 44, 76, 44);
+         it.line(54, 20, 74, 44);
+         it.line(74, 20, 54, 44);
+         it.filled_circle(64, 38, 2);
+      }
+      else if (id(lockout_state) == 2) {
+         // Locked Padlock
+         it.filled_rectangle(54, 34, 20, 16);
+         it.line(58, 34, 58, 26);
+         it.line(70, 34, 70, 26);
+         it.line(58, 26, 70, 26);
+      }
+      else if (id(lockout_state) == 3) {
+         // Unlocked Padlock
+         it.filled_rectangle(54, 34, 20, 16);
+         it.line(58, 34, 58, 20);
+         it.line(58, 20, 70, 20);
+      }
+
+pcf8574:
+  - id: 'pcf8574_hub'
+    address: 0x20
+
+matrix_keypad:
+  - id: my_keypad
+    rows:
+      - pin: { pcf8574: pcf8574_hub, number: 7, mode: OUTPUT }
+      - pin: { pcf8574: pcf8574_hub, number: 6, mode: OUTPUT }
+      - pin: { pcf8574: pcf8574_hub, number: 5, mode: OUTPUT }
+      - pin: { pcf8574: pcf8574_hub, number: 4, mode: OUTPUT }
+    columns:
+      - pin: { pcf8574: pcf8574_hub, number: 3, mode: INPUT }
+      - pin: { pcf8574: pcf8574_hub, number: 2, mode: INPUT }
+      - pin: { pcf8574: pcf8574_hub, number: 1, mode: INPUT }
+      - pin: { pcf8574: pcf8574_hub, number: 0, mode: INPUT }
+    keys: "123A456B789C*0#D"
+
+    on_key:
+      - if:
+          condition:
+            lambda: 'return id(lockout_state) == 0;'
+          then:
+            - lambda: |-
+                // Dynamic beeps
+                // Varied Pitch & Rhythm Combinations
+                std::string note;
+                switch(x) {
+                  case '1': note = "16c7,16d7,16c6"; break; // High-High-Low
+                  case '2': note = "16d7,16b6,16d7"; break; // High-Low-High
+                  case '3': note = "32c6,32c7,32d7"; break; // Triple-Rising
+                  case 'A': note = "32d7,32c7,32c6"; break; // Triple-Falling
+
+                  case '4': note = "16c6,32c7,16c6"; break; // Punchy Sandwich
+                  case '5': note = "16b6,16c7,32d7"; break; // Climbing
+                  case '6': note = "32d7,16c7,16b6"; break; // Dropping
+                  case 'B': note = "16c7,32d7,16c7"; break; // Bounce
+
+                  case '7': note = "16c6,16b6,16c7"; break; // Mixed-Mid
+                  case '8': note = "32c7,16d7,32c7"; break; // Center-Peak
+                  case '9': note = "16d7,32b6,16d7"; break; // Wide-Swing
+                  case 'C': note = "32b6,16c6,32b6"; break; // Tight-Sandwich
+
+                  case '*': note = "16c7,16c7,32d7"; break; // Heavy-End
+                  case '0': note = "32c6,32c6,16b6"; break; // Light-Start
+                  case '#': note = "16d7,32c7,32c7"; break; // Heavy-Start
+                  case 'D': note = "32b6,16d7,32b6"; break; // Sharp-Bounce
+                }
+
+                // Play at octave 6 (base), ensuring notes are within 4-7 range
+                id(rtttl_player).play("beep:d=16,o=6,b=500:" + note);
+
+                if (x == '#') {
+                  id(lockout_state) = 1;
+                  id(my_display).update();
+                } else if (id(actual_pin).length() < 8) {
+                  id(actual_pin) += x;
+                  id(display_pin) += "*";
+                  id(my_display).update();
+                }
+            - if:
+                condition:
+                  lambda: 'return id(lockout_state) == 1;'
+                then:
+                  - script.execute: auth_request_script
+
+script:
+  - id: auth_request_script
+    mode: single
+    then:
+      - repeat:
+          count: 4
+          then:
+            - if:
+                condition:
+                  lambda: 'return id(lockout_state) == 1;'
+                then:
+                  # 1. Allow the system to catch up before the wait
+                  - delay: 10ms
+
+                  - wait_until:
+                      condition: api.connected
+                      timeout: 2s
+
+                  # 2. Allow the system to catch up after the wait
+                  - delay: 10ms
+
+                  - if:
+                      condition: api.connected
+                      then:
+                        - delay: 500ms
+
+                        # 3. Explicitly yield before network-heavy event
+                        - delay: 10ms
+
+                        - homeassistant.event:
+                            event: esphome.keypad_auth_request
+                            data:
+                              pin_hash: !lambda |-
+                                std::string salted_pin = std::string("${my_hash_salt}") + id(actual_pin);
+                                return get_sha256(salted_pin);
+
+                        - delay: 2.5s
+
+sensor:
+  - platform: adc
+    pin: GPIO34
+    name: "Battery Voltage Raw"
+    id: battery_voltage_raw
+    attenuation: 12db
+    update_interval: never
+    accuracy_decimals: 2
+    filters:
+      - multiply: 2.0
+
+  - platform: template
+    name: "Battery Capacity"
+    id: battery_capacity
+    device_class: battery
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    update_interval: never
+    lambda: |-
+      if (!id(battery_voltage_raw).has_state()) return {};
+      float voltage = id(battery_voltage_raw).state;
+      float max_voltage = 4.2;
+      float min_voltage = 3.2;
+      if (std::isnan(voltage)) return {};
+      if (voltage >= max_voltage) return 100.0;
+      if (voltage <= min_voltage) return 0.0;
+      return ((voltage - min_voltage) / (max_voltage - min_voltage)) * 100.0;
+
+deep_sleep:
+  id: my_deep_sleep
+  wakeup_pin:
+    number: GPIO32
+    mode: INPUT_PULLUP
+    inverted: false
+    allow_other_uses: True
+  sleep_duration: 6h
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO32
+      mode: INPUT_PULLUP
+      inverted: false
+      allow_other_uses: True
+    name: "Door Reed Switch"
+    filters:
+      - delayed_on: 50ms
+      - delayed_off: 1s
+    id: door_switch
+    on_release:
+      - logger.log: "Door Closed! Entering deep sleep."
+      - lambda: |-
+          id(my_display).fill(Color::BLACK);
+          id(my_display).update();
+      - delay: 50ms
+      - lambda: id(my_display).turn_off();
+      - wait_until:
+          condition:
+            api.connected:
+          timeout: 10s
+      - delay: 500ms
+      - deep_sleep.enter: my_deep_sleep
+    on_press:
+      - logger.log: "Door Opened! Waking up..."
+
+logger:
+api:
+  encryption:
+    key: !secret api_key
+
+  services:
+    - service: auth_success
+      then:
+        - lambda: |-
+            id(lockout_state) = 3;
+            id(my_display).update();
+        # High-pitch "chippy" success sound
+        - rtttl.play: "success:d=16,o=6,b=400:c6,b6,c7,c7,b6,d7"
+    - service: auth_fail
+      then:
+        - lambda: |-
+            id(lockout_state) = 2;
+            id(my_display).update();
+        # Low-pitch "negative buzz" sound
+        - rtttl.play: "fail:d=32,o=6,b=400:d7,c7,b6,b6,c7,b6"
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  output_power: 8.5dBm

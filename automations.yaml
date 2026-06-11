@@ -205,7 +205,7 @@
   triggers:
   - device_id: 8123aeaa6afb71773030f4393be3b676
     domain: lock
-    entity_id: 58312b97928df1be207c2b2caa790ec7
+    entity_id: bd65b2450ca29ed97679f71df4d5a67d
     type: unlocked
     trigger: device
     for:
@@ -221,7 +221,7 @@
   actions:
   - device_id: 8123aeaa6afb71773030f4393be3b676
     domain: lock
-    entity_id: 58312b97928df1be207c2b2caa790ec7
+    entity_id: bd65b2450ca29ed97679f71df4d5a67d
     type: lock
   mode: single
 - id: '1655340355220'
@@ -1150,7 +1150,7 @@
   actions:
   - device_id: 8123aeaa6afb71773030f4393be3b676
     domain: lock
-    entity_id: 63b7e6912450f4d4791c0b9e1fd4c31e
+    entity_id: bd65b2450ca29ed97679f71df4d5a67d
     type: lock
   mode: single
 - id: '1657990686050'
@@ -1554,3 +1554,92 @@
     type: select_option
     option: pir_and_radar
   mode: single
+- id: '1772075265791'
+  alias: Get bed ready
+  description: ''
+  triggers:
+  - trigger: time
+    at: '22:00:00'
+  conditions: []
+  actions:
+  - action: script.load_bed_preset
+    metadata: {}
+    data:
+      preset_name: Get In Bed
+  mode: single
+- id: '1772075386113'
+  alias: Get ready to wake up
+  description: ''
+  triggers:
+  - trigger: time
+    at: 07:00:00
+  conditions: []
+  actions:
+  - action: script.load_bed_preset
+    metadata: {}
+    data:
+      preset_name: Wake Up
+  mode: single
+- id: '1780633967187'
+  alias: Discharge Upstairs Tablet if > 80
+  description: ''
+  triggers:
+  - type: battery_level
+    device_id: 0e1f0290105555067b1cd67f5ea1500b
+    entity_id: fa7d00b529699ef128b3d1edb81c5297
+    domain: sensor
+    trigger: device
+    above: 80
+  conditions: []
+  actions:
+  - type: turn_off
+    device_id: 0e0bcd9d9666b8c6addb97ea8099ccf9
+    entity_id: 194bd0e5893aa2b666be0c50c7cce6eb
+    domain: switch
+  mode: single
+- id: '1780634093638'
+  alias: Charge Upstaris Tablet if > 20
+  description: ''
+  triggers:
+  - type: battery_level
+    device_id: 0e1f0290105555067b1cd67f5ea1500b
+    entity_id: fa7d00b529699ef128b3d1edb81c5297
+    domain: sensor
+    trigger: device
+    below: 20
+  conditions: []
+  actions:
+  - type: turn_on
+    device_id: 0e0bcd9d9666b8c6addb97ea8099ccf9
+    entity_id: 194bd0e5893aa2b666be0c50c7cce6eb
+    domain: switch
+  mode: single
+- id: '1781117099199'
+  alias: Keypad Authentication Logic
+  description: ''
+  triggers:
+  - event_type: esphome.keypad_auth_request
+    trigger: event
+  actions:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ trigger.event.data.pin_hash == ''43c51fc6a73717519e5b4ae73f363abeef0aa2e2268c88ca90575204ad26a2b2''
+          }}'
+      sequence:
+      - action: esphome.test_esp32c_auth_success
+        data: {}
+      - action: input_number.set_value
+        metadata: {}
+        target:
+          entity_id: input_number.test_esp32c_failed_attempts
+        data:
+          value: 0
+    default:
+    - action: esphome.test_esp32c_auth_fail
+      data: {}
+    - action: input_number.increment
+      metadata: {}
+      target:
+        entity_id: input_number.test_esp32c_failed_attempts
+      data: {}

@@ -64,3 +64,6 @@ favorite_playlists:
 
 favorite_tracks:
   initial_value: []
+
+bed_presets:
+  initial_value: []
