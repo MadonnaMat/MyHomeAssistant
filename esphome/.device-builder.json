@@ -1,0 +1,67 @@
+{
+  "_board_id_user_set_migrated": true,
+  "_dashboard_identity": {
+    "dashboard_id": "C2Wq_NZ1mCHORqZ9ORT2ievEuG660lZf"
+  },
+  "esphome-web-ee069c.yaml": {
+    "mac_address": "D4:E9:F4:EE:06:9C"
+  },
+  "test-esp32c.yaml": {
+    "mac_address": "E8:3D:C1:94:06:00"
+  },
+  "_firmware_jobs": [
+    {
+      "job_id": "56958351f2e8",
+      "configuration": "esphome-web-6f61b4.yaml",
+      "job_type": "compile",
+      "status": "completed",
+      "created_at": "2026-06-25T13:58:41.834062+00:00",
+      "started_at": "2026-06-25T13:58:41.834757+00:00",
+      "completed_at": "2026-06-25T13:59:14.474128+00:00",
+      "exit_code": 0,
+      "error": null,
+      "port": "",
+      "new_name": "",
+      "depends_on": "",
+      "dependency_released": false,
+      "progress": null,
+      "remote_peer": "",
+      "remote_job_id": "",
+      "remote_peer_label": "",
+      "device_name": "",
+      "device_friendly_name": "",
+      "source": "local",
+      "source_pin_sha256": "",
+      "source_label": "",
+      "source_esphome_version": ""
+    },
+    {
+      "job_id": "5a551387eba9",
+      "configuration": "esphome-web-6f61b4.yaml",
+      "job_type": "upload",
+      "status": "failed",
+      "created_at": "2026-06-25T13:35:40.903913+00:00",
+      "started_at": "2026-06-25T13:37:26.598280+00:00",
+      "completed_at": "2026-06-25T13:37:41.281686+00:00",
+      "exit_code": 1,
+      "error": null,
+      "port": "OTA",
+      "new_name": "",
+      "depends_on": "efb32f36d15b",
+      "dependency_released": true,
+      "progress": null,
+      "remote_peer": "",
+      "remote_job_id": "",
+      "remote_peer_label": "",
+      "device_name": "",
+      "device_friendly_name": "",
+      "source": "local",
+      "source_pin_sha256": "",
+      "source_label": "",
+      "source_esphome_version": ""
+    }
+  ],
+  "esphome-web-6f61b4.yaml": {
+    "mac_address": "28:05:A5:6F:90:AC"
+  }
+}
