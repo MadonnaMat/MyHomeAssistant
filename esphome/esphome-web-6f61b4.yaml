@@ -6,36 +6,6 @@ esphome:
   includes:
     - custom_hash.h
 
-  on_boot:
-    # --- EXISTING: Your standard boot sequence ---
-    - priority: -100
-      then:
-        - safe_mode.mark_successful
-        - delay: 500ms
-        - lambda: id(my_display).turn_on();
-        - delay: 50ms
-        - component.update: battery_voltage_raw
-        - component.update: battery_capacity
-        - component.update: my_display
-
-        - wait_until:
-            condition: api.connected
-            timeout: 15s
-        - delay: 2s
-        - if:
-            condition:
-              binary_sensor.is_off: door_switch
-            then:
-              - logger.log: "Wakeup complete: Door is closed. Battery reported, returning to deep sleep."
-              - lambda: |-
-                  id(my_display).fill(Color::BLACK);
-                  id(my_display).update();
-                  id(my_display).turn_off();
-              - delay: 100ms
-              - deep_sleep.enter: my_deep_sleep
-            else:
-              - logger.log: "Wakeup complete: Door is open. Staying awake until closed."
-
 esp32:
   variant: esp32
   framework:
