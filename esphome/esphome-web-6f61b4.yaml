@@ -100,13 +100,7 @@ globals:
 
 output:
   - platform: gpio
-          constexpr uint16_t ADDR_MARKER = 0x0000;
-          constexpr uint16_t ADDR_LED_STATE = 0x0001;
-          constexpr uint16_t ADDR_PRESS_COUNT = 0x0004;
-
     id: user_led
-          id(press_count)++;
-          fram_mb85rc256::FramMB85RC256 fram(id(i2c_bus), 0x50);
     pin: GPIO4
 
 binary_sensor:
@@ -114,18 +108,22 @@ binary_sensor:
     id: toggle_button
     name: "Toggle FRAM LED"
     pin:
-          const bool ok_marker = fram.write_marker(ADDR_MARKER);
-          const bool ok_state = fram.write_bool(ADDR_LED_STATE, id(led_state));
-          const bool ok_count = fram.write_value<uint32_t>(ADDR_PRESS_COUNT, id(press_count));
+      number: GPIO18
+      mode:
+        input: true
         pullup: true
-          if (ok_marker && ok_state && ok_count) {
-            ESP_LOGI("fram", "Button press #%u, LED=%s (saved to FRAM)", id(press_count), id(led_state) ? "ON" : "OFF");
+      inverted: true
+    filters:
       - delayed_on: 30ms
-            ESP_LOGW("fram", "Failed FRAM save on press #%u (marker=%s state=%s count=%s)",
-                     id(press_count), ok_marker ? "ok" : "fail", ok_state ? "ok" : "fail", ok_count ? "ok" : "fail");
+      - delayed_off: 30ms
     on_press:
       - lambda: |-
+          constexpr uint16_t ADDR_MARKER = 0x0000;
+          constexpr uint16_t ADDR_LED_STATE = 0x0001;
+          constexpr uint16_t ADDR_PRESS_COUNT = 0x0004;
+
           id(led_state) = !id(led_state);
+          id(press_count)++;
           fram_mb85rc256::FramMB85RC256 fram(id(i2c_bus), 0x50);
 
           if (id(led_state)) {
@@ -134,14 +132,15 @@ binary_sensor:
             id(user_led).turn_off();
           }
 
-          const bool state = id(led_state);
-          const bool ok_state = fram.write_bool(0x0001, state);
-          const bool ok_magic = fram.write_marker(0x0000);
+          const bool ok_marker = fram.write_marker(ADDR_MARKER);
+          const bool ok_state = fram.write_bool(ADDR_LED_STATE, id(led_state));
+          const bool ok_count = fram.write_value<uint32_t>(ADDR_PRESS_COUNT, id(press_count));
 
-          if (ok_magic && ok_state) {
-            ESP_LOGI("fram", "Saved LED state to FRAM: %s", id(led_state) ? "ON" : "OFF");
+          if (ok_marker && ok_state && ok_count) {
+            ESP_LOGI("fram", "Button press #%u, LED=%s (saved to FRAM)", id(press_count), id(led_state) ? "ON" : "OFF");
           } else {
-            ESP_LOGW("fram", "Failed to save LED state to FRAM");
+            ESP_LOGW("fram", "Failed FRAM save on press #%u (marker=%s state=%s count=%s)",
+                     id(press_count), ok_marker ? "ok" : "fail", ok_state ? "ok" : "fail", ok_count ? "ok" : "fail");
           }
 
 ota:
