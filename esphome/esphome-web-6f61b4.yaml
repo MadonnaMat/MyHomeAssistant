@@ -65,9 +65,6 @@ binary_sensor:
       - delayed_on: 50ms
       - delayed_off: 1s
     id: door_switch
-    on_press:
-      - logger.log: "Door Opened! Waking up..."
-
 logger:
 api:
   encryption:
