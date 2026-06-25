@@ -61,7 +61,7 @@ binary_sensor:
     id: toggle_button
     name: "Toggle FRAM LED"
     pin:
-      number: GPIO5
+      number: GPIO18
       mode:
         input: true
         pullup: true
