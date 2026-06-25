@@ -11,9 +11,10 @@ esphome:
       - lambda: |-
           uint8_t magic = 0;
           uint8_t state = 0;
+          fram_mb85rc256::FramMB85RC256 fram(id(i2c_bus), 0x50);
 
-          const bool ok_magic = fram_mb85rc256_read_u8(id(i2c_bus), 0x50, 0x0000, magic);
-          const bool ok_state = fram_mb85rc256_read_u8(id(i2c_bus), 0x50, 0x0001, state);
+          const bool ok_magic = fram.read_u8(0x0000, magic);
+          const bool ok_state = fram.read_u8(0x0001, state);
 
           if (ok_magic && ok_state && magic == 0xA5) {
             id(led_state) = state != 0;
@@ -72,6 +73,7 @@ binary_sensor:
     on_press:
       - lambda: |-
           id(led_state) = !id(led_state);
+          fram_mb85rc256::FramMB85RC256 fram(id(i2c_bus), 0x50);
 
           if (id(led_state)) {
             id(user_led).turn_on();
@@ -81,8 +83,8 @@ binary_sensor:
 
           const uint8_t magic = 0xA5;
           const uint8_t state = id(led_state) ? 1 : 0;
-          const bool ok_magic = fram_mb85rc256_write_u8(id(i2c_bus), 0x50, 0x0000, magic);
-          const bool ok_state = fram_mb85rc256_write_u8(id(i2c_bus), 0x50, 0x0001, state);
+          const bool ok_magic = fram.write_u8(0x0000, magic);
+          const bool ok_state = fram.write_u8(0x0001, state);
 
           if (ok_magic && ok_state) {
             ESP_LOGI("fram", "Saved LED state to FRAM: %s", id(led_state) ? "ON" : "OFF");
