@@ -14,67 +14,6 @@ i2c:
   sda: GPIO21
   scl: GPIO22
   scan: true
-script:
-
-sensor:
-  - platform: template
-    name: "Battery Capacity"
-    id: battery_capacity
-    device_class: battery
-    unit_of_measurement: "%"
-    accuracy_decimals: 0
-    update_interval: never
-    lambda: |-
-      if (!id(battery_voltage_raw).has_state()) return {};
-      float voltage = id(battery_voltage_raw).state;
-      float max_voltage = 4.2;
-      float min_voltage = 3.2;
-      if (std::isnan(voltage)) return {};
-      if (voltage >= max_voltage) return 100.0;
-      if (voltage <= min_voltage) return 0.0;
-      return ((voltage - min_voltage) / (max_voltage - min_voltage)) * 100.0;
-
-deep_sleep:
-  id: my_deep_sleep
-  wakeup_pin:
-    number: GPIO32
-    mode: INPUT_PULLUP
-    inverted: false
-    allow_other_uses: True
-  sleep_duration: 6h
-
-binary_sensor:
-  - platform: gpio
-    pin:
-      number: GPIO32
-      mode: INPUT_PULLUP
-      inverted: false
-      allow_other_uses: True
-    name: "Door Reed Switch"
-    filters:
-      - delayed_on: 50ms
-      - delayed_off: 1s
-    id: door_switch
-logger:
-api:
-  encryption:
-    key: !secret api_key
-
-  services:
-    - service: auth_success
-      then:
-        - lambda: |-
-            id(lockout_state) = 3;
-            id(my_display).update();
-        # High-pitch "chippy" success sound
-        - rtttl.play: "success:d=16,o=6,b=400:c6,b6,c7,c7,b6,d7"
-    - service: auth_fail
-      then:
-        - lambda: |-
-            id(lockout_state) = 2;
-            id(my_display).update();
-        # Low-pitch "negative buzz" sound
-        - rtttl.play: "fail:d=32,o=6,b=400:d7,c7,b6,b6,c7,b6"
 
 ota:
   - platform: esphome
@@ -82,4 +21,3 @@ ota:
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
-  output_power: 8.5dBm
