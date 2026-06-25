@@ -22,7 +22,7 @@ i2c:
 fram:
   - id: fram_store
     address: 0x50
-    type: FRAM16
+    type: FRAM
     size: 32KiB
 
 fram_pref:
