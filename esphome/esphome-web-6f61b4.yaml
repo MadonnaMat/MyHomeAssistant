@@ -17,16 +17,6 @@ i2c:
 script:
 
 sensor:
-  - platform: adc
-    pin: GPIO34
-    name: "Battery Voltage Raw"
-    id: battery_voltage_raw
-    attenuation: 12db
-    update_interval: never
-    accuracy_decimals: 2
-    filters:
-      - multiply: 2.0
-
   - platform: template
     name: "Battery Capacity"
     id: battery_capacity
