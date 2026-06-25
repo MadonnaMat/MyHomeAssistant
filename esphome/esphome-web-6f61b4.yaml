@@ -3,17 +3,88 @@ esphome:
   friendly_name: test-esp32
   min_version: 2025.11.0
   name_add_mac_suffix: false
+  on_boot:
+    priority: 600
+    then:
+      - lambda: |-
+          bool saved = false;
+          auto pref = id(pref_store)->make_preference<bool>(0x4C454431U);
+          if (pref.load(&saved)) {
+            id(led_state) = saved;
+            ESP_LOGI("fram", "Restored LED state from FRAM: %s", id(led_state) ? "ON" : "OFF");
+          } else {
+            id(led_state) = false;
+            ESP_LOGI("fram", "No saved LED state in FRAM, defaulting to OFF");
+          }
+
+          if (id(led_state)) {
+            id(user_led).turn_on();
+          } else {
+            id(user_led).turn_off();
+          }
 
 esp32:
   variant: esp32
   framework:
     type: arduino
 
+external_components:
+  - source: github://pr#14119
+    components: [fram_i2c, nvm]
+    refresh: 1h
 
 i2c:
   sda: GPIO21
   scl: GPIO22
   scan: true
+
+nvm:
+  - platform: fram_i2c
+    id: fram_store
+    address: 0x50
+    model: MB85RC256
+    partitions:
+      - id: pref_store
+        type: preferences
+        size: 4KB
+
+globals:
+  - id: led_state
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+output:
+  - platform: gpio
+    id: user_led
+    pin: GPIO4
+
+binary_sensor:
+  - platform: gpio
+    id: toggle_button
+    name: "Toggle FRAM LED"
+    pin:
+      number: GPIO5
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    filters:
+      - delayed_on: 30ms
+      - delayed_off: 30ms
+    on_press:
+      - lambda: |-
+          id(led_state) = !id(led_state);
+
+          if (id(led_state)) {
+            id(user_led).turn_on();
+          } else {
+            id(user_led).turn_off();
+          }
+
+          auto pref = id(pref_store)->make_preference<bool>(0x4C454431U);
+          pref.save(&id(led_state));
+          ESP_LOGI("fram", "Saved LED state to FRAM: %s", id(led_state) ? "ON" : "OFF");
 
 ota:
   - platform: esphome
