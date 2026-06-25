@@ -3,6 +3,8 @@ esphome:
   friendly_name: test-esp32
   min_version: 2025.11.0
   name_add_mac_suffix: false
+  includes:
+    - fram_mb85rc256.h
   on_boot:
     priority: -100
     then:
@@ -10,12 +12,10 @@ esphome:
           uint8_t magic = 0;
           uint8_t state = 0;
 
-          uint8_t addr_magic[2] = {0x00, 0x00};
-          uint8_t addr_state[2] = {0x00, 0x01};
-          auto err_magic = id(i2c_bus).write_read(0x50, addr_magic, 2, &magic, 1);
-          auto err_state = id(i2c_bus).write_read(0x50, addr_state, 2, &state, 1);
+          const bool ok_magic = fram_mb85rc256_read_u8(&id(i2c_bus), 0x50, 0x0000, magic);
+          const bool ok_state = fram_mb85rc256_read_u8(&id(i2c_bus), 0x50, 0x0001, state);
 
-          if (err_magic == esphome::i2c::ERROR_OK && err_state == esphome::i2c::ERROR_OK && magic == 0xA5) {
+          if (ok_magic && ok_state && magic == 0xA5) {
             id(led_state) = state != 0;
             ESP_LOGI("fram", "Restored LED state from FRAM: %s", id(led_state) ? "ON" : "OFF");
           } else {
@@ -76,10 +76,8 @@ binary_sensor:
 
           const uint8_t magic = 0xA5;
           const uint8_t state = id(led_state) ? 1 : 0;
-          uint8_t write_magic[3] = {0x00, 0x00, magic};
-          uint8_t write_state[3] = {0x00, 0x01, state};
-          auto ok_magic = id(i2c_bus).write(0x50, write_magic, 3) == esphome::i2c::ERROR_OK;
-          auto ok_state = id(i2c_bus).write(0x50, write_state, 3) == esphome::i2c::ERROR_OK;
+          const bool ok_magic = fram_mb85rc256_write_u8(&id(i2c_bus), 0x50, 0x0000, magic);
+          const bool ok_state = fram_mb85rc256_write_u8(&id(i2c_bus), 0x50, 0x0001, state);
 
           if (ok_magic && ok_state) {
             ESP_LOGI("fram", "Saved LED state to FRAM: %s", id(led_state) ? "ON" : "OFF");
