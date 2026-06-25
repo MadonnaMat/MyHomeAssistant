@@ -3,40 +3,49 @@ esphome:
   friendly_name: test-esp32
   min_version: 2025.11.0
   name_add_mac_suffix: false
+  includes:
+    - fram_mb85rc256.h
+  on_boot:
+    priority: -100
+    then:
+      - lambda: |-
+          uint8_t magic = 0;
+          uint8_t state = 0;
+
+          if (fram_read_u8(0x50, 0x0000, magic) && magic == 0xA5 && fram_read_u8(0x50, 0x0001, state)) {
+            id(led_state) = state != 0;
+            ESP_LOGI("fram", "Restored LED state from FRAM: %s", id(led_state) ? "ON" : "OFF");
+          } else {
+            id(led_state) = false;
+            ESP_LOGI("fram", "FRAM empty/uninitialized, default LED state OFF");
+          }
+
+          if (id(led_state)) {
+            id(user_led).turn_on();
+          } else {
+            id(user_led).turn_off();
+          }
 
 esp32:
   variant: esp32
   framework:
     type: arduino
 
-external_components:
-  - source: github://pr#4880
-    components: [fram, fram_pref]
-    refresh: 1h
-
 i2c:
   sda: GPIO21
   scl: GPIO22
   scan: true
 
-fram:
-  - id: fram_store
-    address: 0x50
-    type: FRAM
-    size: 32KiB
+globals:
+  - id: led_state
+    type: bool
+    restore_value: no
+    initial_value: "false"
 
-fram_pref:
-  id: fram_pref_store
-  fram_id: fram_store
-  pool_start: 0
-  pool_size: 4096
-
-switch:
+output:
   - platform: gpio
-    id: led_switch
-    name: "FRAM LED"
+    id: user_led
     pin: GPIO4
-    restore_mode: RESTORE_DEFAULT_OFF
 
 binary_sensor:
   - platform: gpio
@@ -52,7 +61,25 @@ binary_sensor:
       - delayed_on: 30ms
       - delayed_off: 30ms
     on_press:
-      - switch.toggle: led_switch
+      - lambda: |-
+          id(led_state) = !id(led_state);
+
+          if (id(led_state)) {
+            id(user_led).turn_on();
+          } else {
+            id(user_led).turn_off();
+          }
+
+          const uint8_t magic = 0xA5;
+          const uint8_t state = id(led_state) ? 1 : 0;
+          const bool ok_magic = fram_write_u8(0x50, 0x0000, magic);
+          const bool ok_state = fram_write_u8(0x50, 0x0001, state);
+
+          if (ok_magic && ok_state) {
+            ESP_LOGI("fram", "Saved LED state to FRAM: %s", id(led_state) ? "ON" : "OFF");
+          } else {
+            ESP_LOGW("fram", "Failed to save LED state to FRAM");
+          }
 
 ota:
   - platform: esphome
