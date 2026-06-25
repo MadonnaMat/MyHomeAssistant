@@ -46,7 +46,7 @@ nvm:
     partitions:
       - id: pref_store
         type: preferences
-        size: 4KB
+        size: 4KiB
 
 globals:
   - id: led_state
