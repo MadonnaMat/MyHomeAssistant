@@ -34,6 +34,11 @@ esp32:
   framework:
     type: arduino
 
+logger:
+  level: DEBUG
+
+api:
+
 i2c:
   id: i2c_bus
   sda: GPIO21
@@ -56,7 +61,7 @@ binary_sensor:
     id: toggle_button
     name: "Toggle FRAM LED"
     pin:
-      number: GPIO18
+      number: GPIO5
       mode:
         input: true
         pullup: true
