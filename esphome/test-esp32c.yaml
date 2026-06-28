@@ -5,11 +5,36 @@ esphome:
   name_add_mac_suffix: false
   includes:
     - custom_hash.h
+    - fram_mb85rc256.h
 
   on_boot:
     # --- EXISTING: Your standard boot sequence ---
     - priority: -100
       then:
+        - lambda: |-
+            constexpr uint16_t ADDR_MARKER = 0x0000;
+            constexpr uint16_t ADDR_FAILED_ATTEMPTS = 0x0001;
+
+            fram_mb85rc256::FramMB85RC256 fram(id(i2c_bus), 0x50);
+            uint8_t cached_attempts = 0;
+
+            if (fram.check_marker(ADDR_MARKER) && fram.read_u8(ADDR_FAILED_ATTEMPTS, cached_attempts)) {
+              id(failed_attempts) = cached_attempts;
+              ESP_LOGI("keypad", "Restored failed_attempts from FRAM: %d", id(failed_attempts));
+            } else {
+              // Fail-open policy: allow typing immediately even if FRAM read fails.
+              id(failed_attempts) = 0;
+              fram.write_marker(ADDR_MARKER);
+              fram.write_u8(ADDR_FAILED_ATTEMPTS, 0);
+              ESP_LOGW("keypad", "FRAM cache unavailable, defaulting failed_attempts to 0");
+            }
+
+            if (id(failed_attempts) >= 3) {
+              id(lockout_state) = 2;
+            } else {
+              id(lockout_state) = 0;
+            }
+
         - safe_mode.mark_successful
         - delay: 500ms
         - lambda: |-
@@ -20,37 +45,6 @@ esphome:
         - component.update: battery_voltage_raw
         - component.update: battery_capacity
         - component.update: my_display
-
-        - lambda: |-
-            id(lockout_state) = 1;
-            if(id(my_display).is_ready()) {
-              id(my_display).update();
-            }
-
-        - wait_until:
-            condition: api.connected
-            timeout: 15s
-        - wait_until:
-            condition:
-              lambda: return id(ha_failed_attempts).has_state();
-        - lambda: |-
-            if (id(ha_failed_attempts).has_state()) {
-              int restored_from_ha = static_cast<int>(id(ha_failed_attempts).state + 0.5f);
-              if (restored_from_ha < 0) restored_from_ha = 0;
-              id(failed_attempts) = restored_from_ha;
-              ESP_LOGI("keypad", "Restored failed_attempts from HA: %d", id(failed_attempts));
-            } else {
-              ESP_LOGW("keypad", "HA failed_attempts helper unavailable on boot; defaulting to %d", id(failed_attempts));
-            }
-            if (id(failed_attempts) >= 3) {
-              id(lockout_state) = 2;
-            }
-            else {
-              id(lockout_state) = 0;
-            }
-            if(id(my_display).is_ready()) {
-              id(my_display).update();
-            }
         - delay: 2s
         - if:
             condition:
@@ -109,6 +103,7 @@ rtttl:
     output: buzzer_pwm
 
 i2c:
+  id: i2c_bus
   sda: GPIO4
   scl: GPIO5
   scan: true
@@ -285,11 +280,19 @@ sensor:
     on_value:
       then:
         - lambda: |-
+            constexpr uint16_t ADDR_FAILED_ATTEMPTS = 0x0001;
+
             int from_ha = static_cast<int>(x + 0.5f);
             if (from_ha < 0) from_ha = 0;
             if (id(failed_attempts) != from_ha) {
               id(failed_attempts) = from_ha;
               ESP_LOGI("keypad", "Synced failed_attempts from HA: %d", id(failed_attempts));
+
+              fram_mb85rc256::FramMB85RC256 fram(id(i2c_bus), 0x50);
+              if (!fram.write_u8(ADDR_FAILED_ATTEMPTS, static_cast<uint8_t>(id(failed_attempts)))) {
+                ESP_LOGW("keypad", "Failed to write failed_attempts to FRAM from HA sync");
+              }
+
               if (id(failed_attempts) >= 3) {
                 id(lockout_state) = 2;
               }
@@ -400,8 +403,16 @@ api:
     - service: auth_success
       then:
         - lambda: |-
+            constexpr uint16_t ADDR_FAILED_ATTEMPTS = 0x0001;
+
             id(failed_attempts) = 0; // Explicitly reset to 0
             ESP_LOGI("keypad", "Set failed_attempts after auth_success: %d", id(failed_attempts));
+
+            fram_mb85rc256::FramMB85RC256 fram(id(i2c_bus), 0x50);
+            if (!fram.write_u8(ADDR_FAILED_ATTEMPTS, 0)) {
+              ESP_LOGW("keypad", "Failed to write failed_attempts to FRAM after auth_success");
+            }
+
             id(lockout_state) = 3;
             if (id(my_display).is_ready()) {
               id(my_display).update();
@@ -411,9 +422,17 @@ api:
     - service: auth_fail
       then:
         - lambda: |-
+            constexpr uint16_t ADDR_FAILED_ATTEMPTS = 0x0001;
+
             id(lockout_state) = 2;
             id(failed_attempts) = id(failed_attempts) + 1; // Fixed: Use explicit assignment
             ESP_LOGI("keypad", "Set failed_attempts after auth_fail: %d", id(failed_attempts));
+
+            fram_mb85rc256::FramMB85RC256 fram(id(i2c_bus), 0x50);
+            if (!fram.write_u8(ADDR_FAILED_ATTEMPTS, static_cast<uint8_t>(id(failed_attempts)))) {
+              ESP_LOGW("keypad", "Failed to write failed_attempts to FRAM after auth_fail");
+            }
+
             if (id(my_display).is_ready()) {
               id(my_display).update();
             }
