@@ -9,12 +9,12 @@ esphome:
   includes:
     - components/custom_hash.h
     - components/fram_mb85rc256.h
-    - components/keypad_state.h
-    - components/keypad_fram_store.h
-    - components/keypad_tones.h
-    - components/keypad_battery.h
-    - components/keypad_display.h
-    - components/keypad_auth.h
+    - remote-keypad/keypad_state.h
+    - remote-keypad/keypad_fram_store.h
+    - remote-keypad/keypad_tones.h
+    - remote-keypad/keypad_battery.h
+    - remote-keypad/keypad_display.h
+    - remote-keypad/keypad_auth.h
 
   on_boot:
     # --- EXISTING: Your standard boot sequence ---
