@@ -7,8 +7,8 @@ esphome:
   min_version: 2025.11.0
   name_add_mac_suffix: false
   includes:
-    - custom_hash.h
-    - fram_mb85rc256.h
+    - components/custom_hash.h
+    - components/fram_mb85rc256.h
 
   on_boot:
     # --- EXISTING: Your standard boot sequence ---
