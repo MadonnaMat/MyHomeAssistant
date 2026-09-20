@@ -191,9 +191,7 @@ sensor:
     unit_of_measurement: "%"
     accuracy_decimals: 0
     update_interval: never
-    lambda: |-
-      if (!id(battery_voltage_raw).has_state()) return {};
-      return keypad_battery::voltage_to_percent(id(battery_voltage_raw).state);
+    lambda: 'return keypad_battery::capacity_from_sensor(id(battery_voltage_raw));'
 
 deep_sleep:
   id: my_deep_sleep
@@ -218,16 +216,9 @@ binary_sensor:
     id: door_switch
     on_release:
       - logger.log: "Door Closed! Entering deep sleep."
-      - lambda: |-
-          if(id(my_display).is_ready()) {
-            id(my_display).fill(Color::BLACK);
-            id(my_display).update();
-          }
+      - lambda: 'keypad_display::clear(id(my_display));'
       - delay: 50ms
-      - lambda: |-
-          if(id(my_display).is_ready()) {
-            id(my_display).turn_off();
-          }
+      - lambda: 'keypad_display::power_off(id(my_display));'
       - wait_until:
           condition:
             api.connected:
