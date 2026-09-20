@@ -20,16 +20,11 @@ esphome:
     # --- EXISTING: Your standard boot sequence ---
     - priority: -100
       then:
-        - lambda: |-
-            id(failed_attempts) = keypad_fram::restore_failed_attempts(id(i2c_bus));
-            id(lockout_state) = (id(failed_attempts) >= 3) ? keypad_state::LOCKED : keypad_state::ACTIVE;
+        - lambda: 'keypad_auth::restore_on_boot(id(i2c_bus), id(failed_attempts), id(lockout_state));'
 
         - safe_mode.mark_successful
         - delay: 500ms
-        - lambda: |-
-            if(id(my_display).is_ready()) {
-              id(my_display).turn_on();
-            }
+        - lambda: 'keypad_display::power_on(id(my_display));'
         - delay: 50ms
         - component.update: battery_voltage_raw
         - component.update: battery_capacity
