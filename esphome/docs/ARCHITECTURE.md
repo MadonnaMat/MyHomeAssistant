@@ -89,11 +89,12 @@ Builder's browser-based WebSerial flash in the HA web UI — that already
 works from whichever machine the browser is running on, no new tooling
 needed.
 
-Known quirk: the WebSerial "Plug into this computer" install can fail
-partway through, typically on a C-file compile step, and this isn't
-specific to any one device or file. Just hit Install again — it resumes
-from where it left off rather than starting a full rebuild, and normally
-succeeds on the retry.
+Known quirk: an Install can fail partway through, typically on a C-file
+compile step — this happens during compilation itself, so it's not
+specific to WebSerial/USB, OTA installs can hit it too, and it isn't
+specific to any one device or file either. Just hit Install again — it
+resumes from where it left off rather than starting a full rebuild, and
+normally succeeds on the retry.
 
 ### Setting this up on a new/different machine
 
