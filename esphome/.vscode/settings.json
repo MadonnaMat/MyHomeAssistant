@@ -1,0 +1,4 @@
+{
+  "esphome.validator": "dashboard",
+  "esphome.dashboardUri": "http://homeassistant.local:6052/"
+}
