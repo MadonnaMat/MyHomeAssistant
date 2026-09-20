@@ -235,20 +235,10 @@ switch:
     lambda: |-
       return id(failed_attempts) >= 3;
     turn_on_action:
-      - lambda: |-
-          id(failed_attempts) = 3;
-          id(lockout_state) = keypad_state::LOCKED;
-          if (id(my_display).is_ready()) {
-            id(my_display).update();
-          }
+      - lambda: 'keypad_auth::lock_from_ha(id(failed_attempts), id(lockout_state), id(my_display));'
     turn_off_action:
       - logger.log: "Lockout cleared from Home Assistant"
-      - lambda: |-
-          id(failed_attempts) = 0;
-          keypad_state::reset_pin_entry(id(actual_pin), id(display_pin), id(lockout_state));
-          if (id(my_display).is_ready()) {
-            id(my_display).update();
-          }
+      - lambda: 'keypad_auth::unlock_from_ha(id(actual_pin), id(display_pin), id(failed_attempts), id(lockout_state), id(my_display));'
 
 logger:
 api:
