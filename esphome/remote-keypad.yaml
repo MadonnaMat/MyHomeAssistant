@@ -248,41 +248,19 @@ api:
   services:
     - service: auth_success
       then:
-        - lambda: |-
-            id(failed_attempts) = 0; // Explicitly reset to 0
-            ESP_LOGI("keypad", "Set failed_attempts after auth_success: %d", id(failed_attempts));
-
-            keypad_fram::persist_failed_attempts(id(i2c_bus), 0, "auth_success");
-
-            id(lockout_state) = keypad_state::UNLOCKED;
-            if (id(my_display).is_ready()) {
-              id(my_display).update();
-            }
+        - lambda: 'keypad_auth::handle_auth_success(id(i2c_bus), id(failed_attempts), id(lockout_state), id(my_display));'
         - rtttl.play: "success:d=16,o=6,b=400:c6,b6,c7,c7,b6,d7"
 
     - service: auth_fail
       then:
-        - lambda: |-
-            id(lockout_state) = keypad_state::LOCKED;
-            id(failed_attempts) = id(failed_attempts) + 1; // Fixed: Use explicit assignment
-            ESP_LOGI("keypad", "Set failed_attempts after auth_fail: %d", id(failed_attempts));
-
-            keypad_fram::persist_failed_attempts(id(i2c_bus), static_cast<uint8_t>(id(failed_attempts)), "auth_fail");
-
-            if (id(my_display).is_ready()) {
-              id(my_display).update();
-            }
+        - lambda: 'keypad_auth::handle_auth_fail(id(i2c_bus), id(failed_attempts), id(lockout_state), id(my_display));'
         - rtttl.play: "fail:d=32,o=6,b=400:d7,c7,b6,b6,c7,b6"
         - if:
             condition:
               lambda: 'return id(failed_attempts) < 3;'
             then:
               - delay: 3s
-              - lambda: |-
-                  keypad_state::reset_pin_entry(id(actual_pin), id(display_pin), id(lockout_state));
-                  if (id(my_display).is_ready()) {
-                    id(my_display).update();
-                  }
+              - lambda: 'keypad_auth::reset_after_retry(id(actual_pin), id(display_pin), id(lockout_state), id(my_display));'
 
 ota:
   - platform: esphome
