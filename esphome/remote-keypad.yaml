@@ -9,34 +9,19 @@ esphome:
   includes:
     - components/custom_hash.h
     - components/fram_mb85rc256.h
+    - components/keypad_state.h
+    - components/keypad_fram_store.h
+    - components/keypad_tones.h
+    - components/keypad_battery.h
+    - components/keypad_display.h
 
   on_boot:
     # --- EXISTING: Your standard boot sequence ---
     - priority: -100
       then:
         - lambda: |-
-            constexpr uint16_t ADDR_MARKER = 0x0000;
-            constexpr uint16_t ADDR_FAILED_ATTEMPTS = 0x0001;
-
-            fram_mb85rc256::FramMB85RC256 fram(id(i2c_bus), 0x50);
-            uint8_t cached_attempts = 0;
-
-            if (fram.check_marker(ADDR_MARKER) && fram.read_u8(ADDR_FAILED_ATTEMPTS, cached_attempts)) {
-              id(failed_attempts) = cached_attempts;
-              ESP_LOGI("keypad", "Restored failed_attempts from FRAM: %d", id(failed_attempts));
-            } else {
-              // Fail-open policy: allow typing immediately even if FRAM read fails.
-              id(failed_attempts) = 0;
-              fram.write_marker(ADDR_MARKER);
-              fram.write_u8(ADDR_FAILED_ATTEMPTS, 0);
-              ESP_LOGW("keypad", "FRAM cache unavailable, defaulting failed_attempts to 0");
-            }
-
-            if (id(failed_attempts) >= 3) {
-              id(lockout_state) = 2;
-            } else {
-              id(lockout_state) = 0;
-            }
+            id(failed_attempts) = keypad_fram::restore_failed_attempts(id(i2c_bus));
+            id(lockout_state) = (id(failed_attempts) >= 3) ? keypad_state::LOCKED : keypad_state::ACTIVE;
 
         - safe_mode.mark_successful
         - delay: 500ms
@@ -81,8 +66,8 @@ globals:
     initial_value: '""'
   - id: lockout_state
     type: int
-    initial_value: '0'
-    # 0 = Active, 1 = Pending HA Response, 2 = Failed (Locked), 3 = Success (Unlocked)
+    initial_value: 'keypad_state::ACTIVE'
+    # See components/keypad_state.h LockoutState: ACTIVE, PENDING, LOCKED, UNLOCKED
   - id: failed_attempts
     type: int
     restore_value: false
