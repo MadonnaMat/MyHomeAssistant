@@ -193,21 +193,16 @@ sensor:
     on_value:
       then:
         - lambda: |-
-            constexpr uint16_t ADDR_FAILED_ATTEMPTS = 0x0001;
-
             int from_ha = static_cast<int>(x + 0.5f);
             if (from_ha < 0) from_ha = 0;
             if (id(failed_attempts) != from_ha) {
               id(failed_attempts) = from_ha;
               ESP_LOGI("keypad", "Synced failed_attempts from HA: %d", id(failed_attempts));
 
-              fram_mb85rc256::FramMB85RC256 fram(id(i2c_bus), 0x50);
-              if (!fram.write_u8(ADDR_FAILED_ATTEMPTS, static_cast<uint8_t>(id(failed_attempts)))) {
-                ESP_LOGW("keypad", "Failed to write failed_attempts to FRAM from HA sync");
-              }
+              keypad_fram::persist_failed_attempts(id(i2c_bus), static_cast<uint8_t>(id(failed_attempts)), "ha_sync");
 
               if (id(failed_attempts) >= 3) {
-                id(lockout_state) = 2;
+                id(lockout_state) = keypad_state::LOCKED;
               }
               if (id(my_display).is_ready()) {
                 id(my_display).update();
@@ -233,13 +228,7 @@ sensor:
     update_interval: never
     lambda: |-
       if (!id(battery_voltage_raw).has_state()) return {};
-      float voltage = id(battery_voltage_raw).state;
-      float max_voltage = 4.2;
-      float min_voltage = 3.2;
-      if (std::isnan(voltage)) return {};
-      if (voltage >= max_voltage) return 100.0;
-      if (voltage <= min_voltage) return 0.0;
-      return ((voltage - min_voltage) / (max_voltage - min_voltage)) * 100.0;
+      return keypad_battery::voltage_to_percent(id(battery_voltage_raw).state);
 
 deep_sleep:
   id: my_deep_sleep
