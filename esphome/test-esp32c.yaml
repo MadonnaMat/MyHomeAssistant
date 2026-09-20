@@ -399,8 +399,8 @@ api:
   encryption:
     key: !secret api_key
 
-  services:
-    - service: auth_success
+  actions:
+    - action: auth_success
       then:
         - lambda: |-
             constexpr uint16_t ADDR_FAILED_ATTEMPTS = 0x0001;
@@ -419,7 +419,7 @@ api:
             }
         - rtttl.play: "success:d=16,o=6,b=400:c6,b6,c7,c7,b6,d7"
 
-    - service: auth_fail
+    - action: auth_fail
       then:
         - lambda: |-
             constexpr uint16_t ADDR_FAILED_ATTEMPTS = 0x0001;
