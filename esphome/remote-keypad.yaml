@@ -172,22 +172,7 @@ sensor:
     internal: true
     on_value:
       then:
-        - lambda: |-
-            int from_ha = static_cast<int>(x + 0.5f);
-            if (from_ha < 0) from_ha = 0;
-            if (id(failed_attempts) != from_ha) {
-              id(failed_attempts) = from_ha;
-              ESP_LOGI("keypad", "Synced failed_attempts from HA: %d", id(failed_attempts));
-
-              keypad_fram::persist_failed_attempts(id(i2c_bus), static_cast<uint8_t>(id(failed_attempts)), "ha_sync");
-
-              if (id(failed_attempts) >= 3) {
-                id(lockout_state) = keypad_state::LOCKED;
-              }
-              if (id(my_display).is_ready()) {
-                id(my_display).update();
-              }
-            }
+        - lambda: 'keypad_auth::sync_from_ha(x, id(i2c_bus), id(failed_attempts), id(lockout_state), id(my_display));'
 
   - platform: adc
     pin: GPIO1
