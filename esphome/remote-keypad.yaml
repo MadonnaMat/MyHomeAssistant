@@ -97,7 +97,8 @@ display:
     lambda: |-
       keypad_display::render(it, id(lockout_state), id(display_pin), id(failed_attempts),
                               id(battery_capacity).has_state() ? id(battery_capacity).state : NAN,
-                              id(font_large), id(font_small));
+                              id(font_large), id(font_small),
+                              id(api_server).is_connected());
 
 pcf8574:
   - id: 'pcf8574_hub'
@@ -242,8 +243,14 @@ switch:
 
 logger:
 api:
+  id: api_server
   encryption:
     key: !secret api_key
+
+  on_client_connected:
+    - lambda: 'keypad_display::refresh_if_ready(id(my_display));'
+  on_client_disconnected:
+    - lambda: 'keypad_display::refresh_if_ready(id(my_display));'
 
   services:
     - service: auth_success
