@@ -156,7 +156,7 @@ script:
           then:
             - if:
                 condition:
-                  lambda: 'return id(lockout_state) == 1;'
+                  lambda: 'return id(lockout_state) == keypad_state::PENDING;'
                 then:
                   # 1. Allow the system to catch up before the wait
                   - delay: 10ms
