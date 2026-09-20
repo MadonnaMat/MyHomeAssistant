@@ -132,19 +132,33 @@ sleep, so serial is the only way to see boot output. This has to happen on
 your actual laptop/desktop, not the HA host, since a locally-plugged-in USB
 device is invisible to a Remote-SSH session.
 
-Recommended path — Samba mount + WSL:
+Recommended path — Samba mount + WSL. **Confirmed working end-to-end**
+(flash → `usbipd attach` → live `esphome logs` streaming) using
+`breadboard-esp32.yaml` as the test device:
 
 1. Mount the HA Samba share inside WSL and open `esphome/` there via VS
    Code's **Remote - WSL** extension (not Remote-SSH).
 2. WSL2 doesn't see Windows USB devices by default. Install `usbipd-win` on
-   the Windows side, then:
+   the Windows side (`winget install usbipd-win`), then:
    - `usbipd bind --busid <id>` (one-time per device, needs an **elevated**
      Windows PowerShell — this is a UAC prompt, not scriptable)
    - `usbipd attach --wsl --busid <id>` to attach it into the running WSL
      distro, after which it shows up as `/dev/ttyUSB0` (or similar) in WSL.
-3. From WSL: `esphome logs <file>.yaml --device /dev/ttyUSB0` (a small local
-   `pip install esphome`, independent of the HA-hosted setup), or a
+   - Gotcha: if the Device Builder web UI still has a browser tab open with
+     its log viewer/WebSerial connection to the same device, `attach` fails
+     with "Device busy (exported)". Close that tab first — no `--force`
+     needed, it just needs the browser to let go of the port.
+   - For permanent (no-sudo) access to `/dev/ttyUSB*` in WSL, add your user
+     to the `dialout` group (`sudo usermod -aG dialout $USER`) — takes
+     effect on next WSL login/restart. For an immediate one-off session,
+     `sudo chmod 666 /dev/ttyUSB0` works without waiting for that.
+3. From WSL: `esphome logs <file>.yaml --device /dev/ttyUSB0`, or a
    serial-monitor VS Code extension running in the WSL extension host.
+   `esphome` needs a local install (`pip install esphome`, independent of
+   the HA-hosted one) — on newer Ubuntu WSL images the system Python is
+   "externally managed" and blocks a bare `pip install`, so install it into
+   a venv instead (e.g. `python3 -m venv ~/.local/esphome-venv && source
+   ~/.local/esphome-venv/bin/activate && pip install esphome`).
 
 A VS Code extension trying to reach local hardware *through* a Remote-SSH
 session was tried and doesn't reliably work — Microsoft's own Serial
