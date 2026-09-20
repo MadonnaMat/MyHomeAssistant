@@ -122,16 +122,7 @@ matrix_keypad:
           condition:
             lambda: 'return id(lockout_state) == keypad_state::ACTIVE;'
           then:
-            - lambda: |-
-                id(rtttl_player).play(std::string("beep:d=16,o=6,b=500:") + keypad_tones::note_for_key(x));
-
-                if (x == '#') {
-                  ESP_LOGI("keypad", "failed_attempts before submit: %d", id(failed_attempts));
-                }
-                if (keypad_state::handle_key(x, id(actual_pin), id(display_pin), id(lockout_state))
-                    && id(my_display).is_ready()) {
-                  id(my_display).update();
-                }
+            - lambda: 'keypad_auth::handle_key_press(x, id(rtttl_player), id(my_display), id(failed_attempts), id(actual_pin), id(display_pin), id(lockout_state));'
             - if:
                 condition:
                   lambda: 'return id(lockout_state) == keypad_state::PENDING;'
