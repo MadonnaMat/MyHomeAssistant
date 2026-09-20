@@ -161,9 +161,7 @@ script:
                         - homeassistant.event:
                             event: esphome.keypad_auth_request
                             data:
-                              pin_hash: !lambda |-
-                                std::string salted_pin = std::string("${my_hash_salt}") + id(actual_pin);
-                                return get_sha256(salted_pin);
+                              pin_hash: !lambda 'return get_sha256(std::string("${my_hash_salt}") + id(actual_pin));'
 
                         - delay: 2.5s
 
