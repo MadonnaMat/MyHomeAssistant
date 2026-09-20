@@ -303,17 +303,12 @@ api:
     - service: auth_success
       then:
         - lambda: |-
-            constexpr uint16_t ADDR_FAILED_ATTEMPTS = 0x0001;
-
             id(failed_attempts) = 0; // Explicitly reset to 0
             ESP_LOGI("keypad", "Set failed_attempts after auth_success: %d", id(failed_attempts));
 
-            fram_mb85rc256::FramMB85RC256 fram(id(i2c_bus), 0x50);
-            if (!fram.write_u8(ADDR_FAILED_ATTEMPTS, 0)) {
-              ESP_LOGW("keypad", "Failed to write failed_attempts to FRAM after auth_success");
-            }
+            keypad_fram::persist_failed_attempts(id(i2c_bus), 0, "auth_success");
 
-            id(lockout_state) = 3;
+            id(lockout_state) = keypad_state::UNLOCKED;
             if (id(my_display).is_ready()) {
               id(my_display).update();
             }
@@ -322,16 +317,11 @@ api:
     - service: auth_fail
       then:
         - lambda: |-
-            constexpr uint16_t ADDR_FAILED_ATTEMPTS = 0x0001;
-
-            id(lockout_state) = 2;
+            id(lockout_state) = keypad_state::LOCKED;
             id(failed_attempts) = id(failed_attempts) + 1; // Fixed: Use explicit assignment
             ESP_LOGI("keypad", "Set failed_attempts after auth_fail: %d", id(failed_attempts));
 
-            fram_mb85rc256::FramMB85RC256 fram(id(i2c_bus), 0x50);
-            if (!fram.write_u8(ADDR_FAILED_ATTEMPTS, static_cast<uint8_t>(id(failed_attempts)))) {
-              ESP_LOGW("keypad", "Failed to write failed_attempts to FRAM after auth_fail");
-            }
+            keypad_fram::persist_failed_attempts(id(i2c_bus), static_cast<uint8_t>(id(failed_attempts)), "auth_fail");
 
             if (id(my_display).is_ready()) {
               id(my_display).update();
@@ -343,9 +333,7 @@ api:
             then:
               - delay: 3s
               - lambda: |-
-                  id(actual_pin) = "";
-                  id(display_pin) = "";
-                  id(lockout_state) = 0;
+                  keypad_state::reset_pin_entry(id(actual_pin), id(display_pin), id(lockout_state));
                   if (id(my_display).is_ready()) {
                     id(my_display).update();
                   }
