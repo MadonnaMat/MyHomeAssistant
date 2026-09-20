@@ -129,53 +129,21 @@ matrix_keypad:
     on_key:
       - if:
           condition:
-            lambda: 'return id(lockout_state) == 0;'
+            lambda: 'return id(lockout_state) == keypad_state::ACTIVE;'
           then:
             - lambda: |-
-                // Dynamic beeps
-                // Varied Pitch & Rhythm Combinations
-                std::string note;
-                switch(x) {
-                  case '1': note = "16c7,16d7,16c6"; break; // High-High-Low
-                  case '2': note = "16d7,16b6,16d7"; break; // High-Low-High
-                  case '3': note = "32c6,32c7,32d7"; break; // Triple-Rising
-                  case 'A': note = "32d7,32c7,32c6"; break; // Triple-Falling
-
-                  case '4': note = "16c6,32c7,16c6"; break; // Punchy Sandwich
-                  case '5': note = "16b6,16c7,32d7"; break; // Climbing
-                  case '6': note = "32d7,16c7,16b6"; break; // Dropping
-                  case 'B': note = "16c7,32d7,16c7"; break; // Bounce
-
-                  case '7': note = "16c6,16b6,16c7"; break; // Mixed-Mid
-                  case '8': note = "32c7,16d7,32c7"; break; // Center-Peak
-                  case '9': note = "16d7,32b6,16d7"; break; // Wide-Swing
-                  case 'C': note = "32b6,16c6,32b6"; break; // Tight-Sandwich
-
-                  case '*': note = "16c7,16c7,32d7"; break; // Heavy-End
-                  case '0': note = "32c6,32c6,16b6"; break; // Light-Start
-                  case '#': note = "16d7,32c7,32c7"; break; // Heavy-Start
-                  case 'D': note = "32b6,16d7,32b6"; break; // Sharp-Bounce
-                }
-
-                // Play at octave 6 (base), ensuring notes are within 4-7 range
-                id(rtttl_player).play("beep:d=16,o=6,b=500:" + note);
+                id(rtttl_player).play(std::string("beep:d=16,o=6,b=500:") + keypad_tones::note_for_key(x));
 
                 if (x == '#') {
                   ESP_LOGI("keypad", "failed_attempts before submit: %d", id(failed_attempts));
-                  id(lockout_state) = 1;
-                  if(id(my_display).is_ready()) {
-                    id(my_display).update();
-                  }
-                } else if (id(actual_pin).length() < 8) {
-                  id(actual_pin) += x;
-                  id(display_pin) += "*";
-                  if(id(my_display).is_ready()) {
-                    id(my_display).update();
-                  }
+                }
+                if (keypad_state::handle_key(x, id(actual_pin), id(display_pin), id(lockout_state))
+                    && id(my_display).is_ready()) {
+                  id(my_display).update();
                 }
             - if:
                 condition:
-                  lambda: 'return id(lockout_state) == 1;'
+                  lambda: 'return id(lockout_state) == keypad_state::PENDING;'
                 then:
                   - script.execute: auth_request_script
 
