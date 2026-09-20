@@ -89,6 +89,34 @@ Builder's browser-based WebSerial flash in the HA web UI — that already
 works from whichever machine the browser is running on, no new tooling
 needed.
 
+### Setting this up on a new/different machine
+
+Everything below is per-machine — `.vscode/settings.json` in this repo
+covers the ESPHome extension config, but the extension itself and the
+mount/SSH connection have to be set up on each new machine you edit from.
+
+1. **Get the files onto that machine.** Either connect VS Code to them
+   remotely — Remote-SSH into the HA host, or Remote-WSL over the Samba
+   share mounted in WSL (see above) — or clone/pull this git repo directly
+   if you just want a local copy without live device-builder integration
+   (note: `secrets.yaml` is gitignored, so a fresh clone won't have it —
+   copy it over separately, it's not something to commit).
+2. **Install the ESPHome VS Code extension** (`ESPHome.esphome-vscode`).
+   If you opened the folder via Remote-SSH/Remote-WSL, VS Code should
+   prompt you to install it automatically (it's in
+   `.vscode/extensions.json`); otherwise install it manually from the
+   marketplace.
+3. **Confirm the dashboard is reachable** from that machine:
+   `curl http://homeassistant.local:6052/` (or open it in a browser). If
+   `.local` mDNS doesn't resolve there, use the HA host's real LAN IP
+   instead and update `esphome.dashboardUri` in `.vscode/settings.json`
+   accordingly (that's a shared repo file, so if different machines need
+   different addresses, override it locally in that machine's user/profile
+   settings instead of editing the repo's copy).
+4. **For local USB serial logs on that machine specifically**, see the
+   WSL + `usbipd-win` steps below — those are Windows/WSL-specific and
+   need to be repeated on each machine you plan to plug a device into.
+
 ## Local USB serial logs (short-wake devices)
 
 Useful for devices like `remote-keypad.yaml` that deep-sleep and only wake
