@@ -35,12 +35,7 @@ esphome:
               binary_sensor.is_off: door_switch
             then:
               - logger.log: "Wakeup complete: Door is closed. Battery reported, returning to deep sleep."
-              - lambda: |-
-                  if(id(my_display).is_ready()) {
-                    id(my_display).fill(Color::BLACK);
-                    id(my_display).update();
-                    id(my_display).turn_off();
-                  }
+              - lambda: 'keypad_display::clear_and_power_off(id(my_display));'
               - delay: 100ms
               - deep_sleep.enter: my_deep_sleep
             else:
@@ -100,9 +95,9 @@ display:
     id: my_display
     update_interval: never
     lambda: |-
-      float battery_pct = id(battery_capacity).has_state() ? id(battery_capacity).state : NAN;
       keypad_display::render(it, id(lockout_state), id(display_pin), id(failed_attempts),
-                              battery_pct, id(font_large), id(font_small));
+                              id(battery_capacity).has_state() ? id(battery_capacity).state : NAN,
+                              id(font_large), id(font_small));
 
 pcf8574:
   - id: 'pcf8574_hub'
