@@ -104,52 +104,9 @@ display:
     id: my_display
     update_interval: never
     lambda: |-
-      // --- 1. Draw Battery Icon (Top Left, ~30px high) ---
-      it.rectangle(0, 2, 14, 28); // Main body
-      it.filled_rectangle(4, 0, 6, 2); // Top nub
-
-      if (id(battery_capacity).has_state()) {
-        float pct = id(battery_capacity).state / 100.0;
-        int h = 24 * pct; // Max fill height is 24px
-        if (h > 0) {
-          // Fill from bottom up
-          it.filled_rectangle(2, 28 - h + 1, 10, h);
-        }
-      }
-
-      // --- 2. Draw State Machine (Input vs Padlocks vs Loading) ---
-      if (id(lockout_state) == 0) {
-         // Show PIN entry asterisks
-         it.printf(64, 30, id(font_large), TextAlign::TOP_CENTER, "%s", id(display_pin).c_str());
-      }
-      else if (id(lockout_state) == 1) {
-         // Loading State: Draw a primitive hourglass centered on the screen
-         it.line(52, 20, 76, 20);
-         it.line(52, 44, 76, 44);
-         it.line(54, 20, 74, 44);
-         it.line(74, 20, 54, 44);
-         it.filled_circle(64, 38, 2);
-      }
-      else if (id(lockout_state) == 2) {
-         // Locked Padlock
-         it.filled_rectangle(54, 34, 20, 16);
-         it.line(58, 34, 58, 26);
-         it.line(70, 34, 70, 26);
-         it.line(58, 26, 70, 26);
-
-         // Calculate and display attempts remaining
-         int attempts_left = 3 - id(failed_attempts);
-         if (attempts_left < 0) attempts_left = 0; // Prevent negative numbers
-
-         // Draw black text inside the filled white padlock
-         it.printf(64, 42, id(font_small), Color::BLACK, TextAlign::CENTER, "%d", attempts_left);
-      }
-      else if (id(lockout_state) == 3) {
-         // Unlocked Padlock
-         it.filled_rectangle(54, 34, 20, 16);
-         it.line(58, 34, 58, 20);
-         it.line(58, 20, 70, 20);
-      }
+      float battery_pct = id(battery_capacity).has_state() ? id(battery_capacity).state : NAN;
+      keypad_display::render(it, id(lockout_state), id(display_pin), id(failed_attempts),
+                              battery_pct, id(font_large), id(font_small));
 
 pcf8574:
   - id: 'pcf8574_hub'
