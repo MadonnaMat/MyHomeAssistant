@@ -54,14 +54,14 @@ esphome:
               binary_sensor.is_off: door_switch
             then:
               - logger.log: "Wakeup complete: Door is closed. Battery reported, returning to deep sleep."
-              #- lambda: |-
-              #    if(id(my_display).is_ready()) {
-              #      id(my_display).fill(Color::BLACK);
-              #      id(my_display).update();
-              #      id(my_display).turn_off();
-              #    }
-              #- delay: 100ms
-              #- deep_sleep.enter: my_deep_sleep
+              - lambda: |-
+                  if(id(my_display).is_ready()) {
+                    id(my_display).fill(Color::BLACK);
+                    id(my_display).update();
+                    id(my_display).turn_off();
+                  }
+              - delay: 100ms
+              - deep_sleep.enter: my_deep_sleep
             else:
               - logger.log: "Wakeup complete: Door is open. Staying awake until closed."
 
@@ -466,4 +466,3 @@ esp32:
   board: esp32-c3-devkitm-1
   framework:
     type: esp-idf
-
