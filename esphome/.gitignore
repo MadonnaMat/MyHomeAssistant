@@ -3,3 +3,9 @@
 # You can modify this file to suit your needs.
 /secrets.yaml
 /.device-builder-peer-link-key.bin
+
+# ESPHome build cache and Device Builder local/tool state (not source)
+/.esphome/
+/.device-builder.json
+/.device-builder.json.lock
+/.device-builder-preferences.json
