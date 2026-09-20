@@ -89,6 +89,12 @@ Builder's browser-based WebSerial flash in the HA web UI — that already
 works from whichever machine the browser is running on, no new tooling
 needed.
 
+Known quirk: the WebSerial "Plug into this computer" install can fail
+partway through, typically on a C-file compile step, and this isn't
+specific to any one device or file. Just hit Install again — it resumes
+from where it left off rather than starting a full rebuild, and normally
+succeeds on the retry.
+
 ### Setting this up on a new/different machine
 
 Everything below is per-machine — `.vscode/settings.json` in this repo
