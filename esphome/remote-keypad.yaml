@@ -14,6 +14,7 @@ esphome:
     - components/keypad_tones.h
     - components/keypad_battery.h
     - components/keypad_display.h
+    - components/keypad_auth.h
 
   on_boot:
     # --- EXISTING: Your standard boot sequence ---
