@@ -598,3 +598,23 @@ delete_bed_preset:
         default([], true) %} {% set filtered = current | rejectattr(''name'', ''eq'',
         preset_name) | list %} {{ {''presets'': filtered} | to_json }}'
   description: ''
+turn_on_hifi:
+  sequence:
+  - if:
+    - condition: state
+      entity_id: switch.sonoff_1001e012bb
+      state:
+      - 'off'
+    then:
+    - type: turn_on
+      device_id: c509528994006d93242cbe8034e91ead
+      entity_id: 65d0cbb577659b20f359dab1ef7d93e1
+      domain: switch
+  - action: remote.send_command
+    target:
+      entity_id: remote.living_room_remote_remote
+    data:
+      device: hifi
+      command: power
+  alias: turn_on_hifi
+  description: ''

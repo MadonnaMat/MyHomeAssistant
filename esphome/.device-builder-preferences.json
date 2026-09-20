@@ -10,5 +10,6 @@
   "table_sort_direction": null,
   "experience_level": "expert",
   "remote_compute_only": false,
+  "version_history_enabled": true,
   "onboarding_completed_version": 0
 }

@@ -205,13 +205,9 @@
   triggers:
   - device_id: 8123aeaa6afb71773030f4393be3b676
     domain: lock
-    entity_id: bd65b2450ca29ed97679f71df4d5a67d
+    entity_id: 63b7e6912450f4d4791c0b9e1fd4c31e
     type: unlocked
     trigger: device
-    for:
-      hours: 0
-      minutes: 10
-      seconds: 0
   conditions:
   - type: is_not_open
     condition: device
@@ -221,7 +217,7 @@
   actions:
   - device_id: 8123aeaa6afb71773030f4393be3b676
     domain: lock
-    entity_id: bd65b2450ca29ed97679f71df4d5a67d
+    entity_id: 63b7e6912450f4d4791c0b9e1fd4c31e
     type: lock
   mode: single
 - id: '1655340355220'
@@ -1572,7 +1568,7 @@
   description: ''
   triggers:
   - trigger: time
-    at: 07:00:00
+    at: input_datetime.bedframe_wake_time
   conditions: []
   actions:
   - action: script.load_bed_preset
@@ -1627,7 +1623,7 @@
         value_template: '{{ trigger.event.data.pin_hash == ''43c51fc6a73717519e5b4ae73f363abeef0aa2e2268c88ca90575204ad26a2b2''
           }}'
       sequence:
-      - action: esphome.test_esp32c_auth_success
+      - action: esphome.remote_keypad_auth_success
         data: {}
       - action: input_number.set_value
         metadata: {}
@@ -1636,7 +1632,7 @@
         data:
           value: 0
     default:
-    - action: esphome.test_esp32c_auth_fail
+    - action: esphome.remote_keypad_auth_fail
       data: {}
     - action: input_number.increment
       metadata: {}

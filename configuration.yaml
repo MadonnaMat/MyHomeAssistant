@@ -43,6 +43,10 @@ logbook:
   exclude:
     entities:
       - automation.util_one_second_updater
+recorder:
+  exclude:
+    entities:
+      - automation.util_one_second_updater
 notify:
   - platform: file
     name: scene_notify_snapshot
